@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enviral-design-node-pack"
+version = "0.1.0"
+description = "Small, dependency-light ComfyUI utility nodes from Enviral Design."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+]
+
+[project.urls]
+Repository = "https://github.com/EnviralDesign/comfyUI-enviral-design-node-pack"
+Documentation = "https://github.com/EnviralDesign/comfyUI-enviral-design-node-pack#readme"
+Issues = "https://github.com/EnviralDesign/comfyUI-enviral-design-node-pack/issues"
+
+[tool.comfy]
+PublisherId = "enviral-design"
+DisplayName = "Enviral Design Node Pack"
