@@ -26,6 +26,33 @@ Behavior:
 This node intentionally uses a fixed socket layout instead of dynamic outputs so
 saved workflows stay predictable and easy to debug.
 
+### `LM Studio Unified (URL + API Key)`
+
+Sends text, an image, or both to an LM Studio OpenAI-compatible chat endpoint.
+
+Inputs:
+
+- `base_url`: accepts `http://127.0.0.1:1234/v1`,
+  `https://lmstudio.example.com`, or a full `/v1/chat/completions` URL
+- `api_key`: optional bearer token for LM Studio API-token auth
+- `api_key_env_var`: optional environment variable fallback when `api_key` is
+  blank, defaulting to `LMSTUDIO_API_KEY`
+- `model`, `prompt`, `system_prompt`, `seed`, `max_tokens`, `temperature`, and
+  `timeout_seconds`
+- optional `image` input for vision-capable models
+
+For a secured Cloudflare route, use a public `base_url` such as:
+
+```text
+https://lmstudio.enviral-design.com
+```
+
+The node will call:
+
+```text
+https://lmstudio.enviral-design.com/v1/chat/completions
+```
+
 ## Install
 
 Clone this repo into `ComfyUI/custom_nodes` and restart ComfyUI.
