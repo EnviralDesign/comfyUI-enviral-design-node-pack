@@ -14,6 +14,11 @@ from PIL import Image
 
 DEFAULT_BASE_URL = "http://127.0.0.1:1234/v1"
 DEFAULT_MODEL = "gemma-4-e4b-uncensored-hauhaucs-aggressive"
+DEFAULT_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/120.0.0.0 Safari/537.36"
+)
 
 
 def _normalize_base_url(base_url):
@@ -154,6 +159,13 @@ class EnviralLmstudioUnified:
                     {"default": 0.7, "min": 0.0, "max": 2.0, "step": 0.05},
                 ),
                 "timeout_seconds": ("INT", {"default": 300, "min": 10, "max": 3600}),
+                "user_agent": (
+                    "STRING",
+                    {
+                        "default": DEFAULT_USER_AGENT,
+                        "tooltip": "HTTP User-Agent sent to LM Studio. Useful when Cloudflare blocks Python's default urllib signature.",
+                    },
+                ),
                 "debug": ("BOOLEAN", {"default": False}),
             },
         }
@@ -177,6 +189,7 @@ class EnviralLmstudioUnified:
         max_tokens=1000,
         temperature=0.7,
         timeout_seconds=300,
+        user_agent=DEFAULT_USER_AGENT,
         debug=False,
     ):
         m = hashlib.sha256()
@@ -191,6 +204,7 @@ class EnviralLmstudioUnified:
             max_tokens,
             temperature,
             timeout_seconds,
+            user_agent,
             debug,
         ):
             m.update(str(value).encode("utf-8"))
@@ -214,6 +228,7 @@ class EnviralLmstudioUnified:
         max_tokens=1000,
         temperature=0.7,
         timeout_seconds=300,
+        user_agent=DEFAULT_USER_AGENT,
         debug=False,
     ):
         prompt = str(prompt or "")
@@ -254,7 +269,11 @@ class EnviralLmstudioUnified:
 
         url = _chat_completions_url(base_url)
         token = _read_api_key(api_key, api_key_env_var)
-        headers = {"Content-Type": "application/json"}
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "User-Agent": str(user_agent or DEFAULT_USER_AGENT),
+        }
         if token:
             headers["Authorization"] = f"Bearer {token}"
 
