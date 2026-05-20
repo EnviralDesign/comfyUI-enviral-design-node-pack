@@ -1,3 +1,18 @@
+DELIMITER_ESCAPES = (
+    ("\\r\\n", "\r\n"),
+    ("\\n", "\n"),
+    ("\\r", "\r"),
+    ("\\t", "\t"),
+)
+
+
+def _decode_delimiter(delimiter):
+    value = str(delimiter or "")
+    for source, target in DELIMITER_ESCAPES:
+        value = value.replace(source, target)
+    return value
+
+
 class TextSplitByDelimiter:
     MAX_OUTPUTS = 8
 
@@ -12,7 +27,7 @@ class TextSplitByDelimiter:
                 }),
                 "delimiter": ("STRING", {
                     "default": ",",
-                    "tooltip": "Delimiter used to split the input text."
+                    "tooltip": "Delimiter used to split the input text. Supports \\n, \\r\\n, \\r, and \\t escapes."
                 }),
                 "output_count": ("INT", {
                     "default": 4,
@@ -49,6 +64,8 @@ class TextSplitByDelimiter:
     CATEGORY = "EnviralDesign/text"
 
     def split_text(self, text, delimiter, output_count, strip_parts, skip_empty):
+        delimiter = _decode_delimiter(delimiter)
+
         if delimiter == "":
             parts = [text]
             join_delimiter = ""

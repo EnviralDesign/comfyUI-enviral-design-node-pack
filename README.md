@@ -22,6 +22,8 @@ Behavior:
   collected into `remainder`
 - `strip_parts` trims whitespace around each part
 - `skip_empty` removes empty parts after splitting
+- `delimiter` supports common escape strings such as `\n`, `\r\n`, `\r`, and
+  `\t`
 
 This node intentionally uses a fixed socket layout instead of dynamic outputs so
 saved workflows stay predictable and easy to debug.
