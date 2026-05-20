@@ -36,7 +36,8 @@ Inputs:
   `https://lmstudio.example.com`, or a full `/v1/chat/completions` URL
 - `api_key`: optional bearer token for LM Studio API-token auth
 - `api_key_env_var`: optional environment variable fallback when `api_key` is
-  blank, defaulting to `LMSTUDIO_API_KEY`
+  blank, defaulting to `LMSTUDIO_API_KEY`. On Windows, this checks the current
+  process first, then the User and Machine environment variable registry values.
 - `model`, `prompt`, `system_prompt`, `seed`, `max_tokens`, `temperature`, and
   `timeout_seconds`
 - optional `image` input for vision-capable models

@@ -75,7 +75,36 @@ def _read_api_key(api_key, api_key_env_var):
 
     env_var = str(api_key_env_var or "").strip()
     if env_var:
-        return os.environ.get(env_var, "").strip()
+        token = os.environ.get(env_var, "").strip()
+        if token:
+            return token
+        return _read_windows_env_var(env_var)
+
+    return ""
+
+
+def _read_windows_env_var(name):
+    if os.name != "nt" or not name:
+        return ""
+
+    try:
+        import winreg
+    except Exception:
+        return ""
+
+    locations = (
+        (winreg.HKEY_CURRENT_USER, "Environment"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"),
+    )
+    for root, subkey in locations:
+        try:
+            with winreg.OpenKey(root, subkey) as key:
+                value, _ = winreg.QueryValueEx(key, name)
+        except OSError:
+            continue
+        value = str(value or "").strip()
+        if value:
+            return value
 
     return ""
 
