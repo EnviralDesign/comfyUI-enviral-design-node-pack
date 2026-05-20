@@ -14,7 +14,7 @@ def _decode_delimiter(delimiter):
 
 
 class TextSplitByDelimiter:
-    MAX_OUTPUTS = 8
+    MAX_OUTPUTS = 20
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -48,18 +48,7 @@ class TextSplitByDelimiter:
         }
 
     RETURN_TYPES = ("STRING",) * MAX_OUTPUTS + ("STRING", "INT")
-    RETURN_NAMES = (
-        "part_1",
-        "part_2",
-        "part_3",
-        "part_4",
-        "part_5",
-        "part_6",
-        "part_7",
-        "part_8",
-        "remainder",
-        "count",
-    )
+    RETURN_NAMES = tuple(f"part_{i}" for i in range(1, MAX_OUTPUTS + 1)) + ("remainder", "count")
     FUNCTION = "split_text"
     CATEGORY = "EnviralDesign/text"
 

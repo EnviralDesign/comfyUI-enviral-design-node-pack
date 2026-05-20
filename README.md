@@ -12,7 +12,7 @@ piece of functionality.
 
 Splits an input string using a delimiter and returns:
 
-- `part_1` through `part_8`
+- `part_1` through `part_20`
 - `remainder`
 - `count`
 
