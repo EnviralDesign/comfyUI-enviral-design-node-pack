@@ -42,7 +42,9 @@ Inputs:
   process first, then the User and Machine environment variable registry values.
 - `model`, `prompt`, `system_prompt`, `seed`, `max_tokens`, `temperature`, and
   `timeout_seconds`
-- optional `image` input for vision-capable models
+- optional `image` input for vision-capable models. If the input is an IMAGE
+  batch, each frame is sent as a separate `image_url` content part, capped by
+  `max_images`
 
 For a secured Cloudflare route, use a public `base_url` such as:
 

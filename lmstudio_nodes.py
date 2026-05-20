@@ -50,12 +50,16 @@ def _chat_completions_url(base_url):
     return f"{normalized}/v1/chat/completions"
 
 
-def _image_to_data_url(image):
-    frame = image[0]
+def _frame_to_data_url(frame):
     if hasattr(frame, "detach"):
         frame = frame.detach().cpu().numpy()
     else:
         frame = np.asarray(frame)
+
+    if frame.ndim == 3 and frame.shape[-1] == 1:
+        frame = frame[..., 0]
+    elif frame.ndim == 3 and frame.shape[-1] > 4:
+        frame = frame[..., :3]
 
     frame = np.clip(frame * 255.0, 0, 255).astype(np.uint8)
     pil_image = Image.fromarray(frame)
@@ -66,6 +70,34 @@ def _image_to_data_url(image):
     pil_image.save(buffer, format="JPEG", quality=92)
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
     return f"data:image/jpeg;base64,{encoded}"
+
+
+def _image_to_content_parts(image, max_images):
+    if image is None:
+        return []
+
+    max_images = max(1, int(max_images))
+
+    if hasattr(image, "detach"):
+        if image.ndim == 3:
+            frames = [image]
+        elif image.ndim == 4:
+            frames = [image[index] for index in range(min(int(image.shape[0]), max_images))]
+        else:
+            raise ValueError(f"image tensor must be [height,width,channels] or [batch,height,width,channels], got {tuple(image.shape)}")
+    else:
+        array = np.asarray(image)
+        if array.ndim == 3:
+            frames = [array]
+        elif array.ndim == 4:
+            frames = [array[index] for index in range(min(int(array.shape[0]), max_images))]
+        else:
+            raise ValueError(f"image array must be [height,width,channels] or [batch,height,width,channels], got {array.shape}")
+
+    return [
+        {"type": "image_url", "image_url": {"url": _frame_to_data_url(frame)}}
+        for frame in frames[:max_images]
+    ]
 
 
 def _read_api_key(api_key, api_key_env_var):
@@ -188,6 +220,15 @@ class EnviralLmstudioUnified:
                     {"default": 0.7, "min": 0.0, "max": 2.0, "step": 0.05},
                 ),
                 "timeout_seconds": ("INT", {"default": 300, "min": 10, "max": 3600}),
+                "max_images": (
+                    "INT",
+                    {
+                        "default": 20,
+                        "min": 1,
+                        "max": 200,
+                        "tooltip": "Maximum number of images from the input IMAGE batch to send as separate image_url parts.",
+                    },
+                ),
                 "user_agent": (
                     "STRING",
                     {
@@ -218,6 +259,7 @@ class EnviralLmstudioUnified:
         max_tokens=1000,
         temperature=0.7,
         timeout_seconds=300,
+        max_images=20,
         user_agent=DEFAULT_USER_AGENT,
         debug=False,
     ):
@@ -233,6 +275,7 @@ class EnviralLmstudioUnified:
             max_tokens,
             temperature,
             timeout_seconds,
+            max_images,
             user_agent,
             debug,
         ):
@@ -257,6 +300,7 @@ class EnviralLmstudioUnified:
         max_tokens=1000,
         temperature=0.7,
         timeout_seconds=300,
+        max_images=20,
         user_agent=DEFAULT_USER_AGENT,
         debug=False,
     ):
@@ -273,13 +317,13 @@ class EnviralLmstudioUnified:
             seed = random.randint(0, 0xFFFFFFFFFFFFFFFF)
 
         user_content = prompt
+        image_parts = []
         if image is not None:
+            image_parts = _image_to_content_parts(image, max_images)
             content_parts = []
             if prompt.strip():
                 content_parts.append({"type": "text", "text": prompt})
-            content_parts.append(
-                {"type": "image_url", "image_url": {"url": _image_to_data_url(image)}}
-            )
+            content_parts.extend(image_parts)
             user_content = content_parts
 
         messages = []
@@ -309,6 +353,8 @@ class EnviralLmstudioUnified:
         if debug:
             print(f"Enviral LM Studio: POST {url}")
             print(f"Enviral LM Studio: model={model}, image={image is not None}")
+            if image is not None:
+                print(f"Enviral LM Studio: image parts={len(image_parts)}")
 
         request = urllib.request.Request(
             url,
