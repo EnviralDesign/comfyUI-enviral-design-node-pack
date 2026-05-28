@@ -28,6 +28,17 @@ Behavior:
 This node intentionally uses a fixed socket layout instead of dynamic outputs so
 saved workflows stay predictable and easy to debug.
 
+### `Lazy Index Switch`
+
+Selects one of `input_0` through `input_19` using a zero-based `index` value.
+
+Behavior:
+
+- accepts any ComfyUI type on its input sockets
+- evaluates only the selected input branch
+- pairs with combo-style nodes that expose an `INDEX` output
+- reports a clear validation error if the selected input is not connected
+
 ### `LM Studio Unified (URL + API Key)`
 
 Sends text, an image, or both to an LM Studio OpenAI-compatible chat endpoint.
