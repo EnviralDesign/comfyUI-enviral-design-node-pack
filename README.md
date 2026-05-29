@@ -39,6 +39,21 @@ Behavior:
 - pairs with combo-style nodes that expose an `INDEX` output
 - reports a clear validation error if the selected input is not connected
 
+### `Enviral Image Resize Kit`
+
+Resizes an image with a small set of explicit workflow-friendly modes:
+
+- `pass-through`: keeps the input image resolution and ignores width/height
+- `explicit resize`: stretches the image to the requested width and height
+- `inside fit`: preserves the full image, pads to the requested aspect ratio,
+  then outputs the requested width and height
+- `outside fit`: fills the requested aspect ratio and center-crops overflow
+
+The mode input is a dropdown, but it also accepts linked strings such as
+`resize`, `pad`, `crop`, and `pass-through`. This makes it pair cleanly with
+combo nodes that output strings. Optional masks are transformed with the same
+geometry and the node returns `image`, `width`, `height`, and `mask`.
+
 ### `LM Studio Unified (URL + API Key)`
 
 Sends text, an image, or both to an LM Studio OpenAI-compatible chat endpoint.
