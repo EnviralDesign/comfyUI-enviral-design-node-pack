@@ -71,6 +71,20 @@ Inputs:
 The CPU methods use `color-matcher`. The `reinhard_lab_gpu` method uses
 ComfyUI's Kornia dependency for Lab-space matching.
 
+### `Model Patch Torch Settings`
+
+Patches a `MODEL` with ComfyUI model callbacks for PyTorch backend settings.
+
+Inputs:
+
+- `model`: model to clone and patch
+- `enable_fp16_accumulation`: toggles
+  `torch.backends.cuda.matmul.allow_fp16_accumulation` while the model runs
+
+When enabled, the patched model turns full FP16 accumulation on before model
+execution and turns it back off during cleanup. When disabled, it forces the
+setting off before model execution.
+
 ### `LM Studio Unified (URL + API Key)`
 
 Sends text, an image, or both to an LM Studio OpenAI-compatible chat endpoint.

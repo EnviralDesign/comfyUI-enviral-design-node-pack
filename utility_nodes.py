@@ -478,3 +478,80 @@ an optional Kornia Lab-space Reinhard path for GPU-friendly batch work.
 
 NODE_CLASS_MAPPINGS["EnviralColorMatchV2"] = EnviralColorMatchV2
 NODE_DISPLAY_NAME_MAPPINGS["EnviralColorMatchV2"] = "Enviral Color Match V2"
+
+
+class EnviralModelPatchTorchSettings:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "model": ("MODEL",),
+                "enable_fp16_accumulation": (
+                    "BOOLEAN",
+                    {
+                        "default": False,
+                        "tooltip": (
+                            "Toggles torch.backends.cuda.matmul.allow_fp16_accumulation "
+                            "while the patched model runs."
+                        ),
+                    },
+                ),
+            },
+        }
+
+    RETURN_TYPES = ("MODEL",)
+    RETURN_NAMES = ("model",)
+    FUNCTION = "patch"
+    CATEGORY = "EnviralDesign/model"
+    DESCRIPTION = """
+Adds model callbacks that enable or disable PyTorch full FP16 accumulation for
+CUDA FP16 matmuls while the model runs.
+"""
+    EXPERIMENTAL = True
+
+    @staticmethod
+    def _ensure_supported():
+        if not hasattr(torch.backends.cuda.matmul, "allow_fp16_accumulation"):
+            raise RuntimeError(
+                "torch.backends.cuda.matmul.allow_fp16_accumulation is not "
+                "available in this PyTorch build."
+            )
+
+    @staticmethod
+    def _set_fp16_accumulation(enabled):
+        logging.info(
+            "Patching torch settings: "
+            "torch.backends.cuda.matmul.allow_fp16_accumulation = %s",
+            enabled,
+        )
+        torch.backends.cuda.matmul.allow_fp16_accumulation = enabled
+
+    def patch(self, model, enable_fp16_accumulation):
+        from comfy.patcher_extension import CallbacksMP
+
+        self._ensure_supported()
+        if not hasattr(model, "clone") or not hasattr(model, "add_callback"):
+            raise RuntimeError(
+                "Model Patch Torch Settings requires a ComfyUI MODEL patcher "
+                "with clone() and add_callback() support."
+            )
+
+        model_clone = model.clone()
+
+        def enable_callback(model_patcher):
+            self._set_fp16_accumulation(True)
+
+        def disable_callback(model_patcher):
+            self._set_fp16_accumulation(False)
+
+        if enable_fp16_accumulation:
+            model_clone.add_callback(CallbacksMP.ON_PRE_RUN, enable_callback)
+            model_clone.add_callback(CallbacksMP.ON_CLEANUP, disable_callback)
+        else:
+            model_clone.add_callback(CallbacksMP.ON_PRE_RUN, disable_callback)
+
+        return (model_clone,)
+
+
+NODE_CLASS_MAPPINGS["EnviralModelPatchTorchSettings"] = EnviralModelPatchTorchSettings
+NODE_DISPLAY_NAME_MAPPINGS["EnviralModelPatchTorchSettings"] = "Model Patch Torch Settings"
