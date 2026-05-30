@@ -1,4 +1,5 @@
 import logging
+import math
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor
@@ -555,3 +556,158 @@ CUDA FP16 matmuls while the model runs.
 
 NODE_CLASS_MAPPINGS["EnviralModelPatchTorchSettings"] = EnviralModelPatchTorchSettings
 NODE_DISPLAY_NAME_MAPPINGS["EnviralModelPatchTorchSettings"] = "Model Patch Torch Settings"
+
+
+class EnviralWanResolutionSnap:
+    PRESETS = {
+        "custom": None,
+        "512 x 512": (512, 512),
+        "640 x 640": (640, 640),
+        "704 x 704": (704, 704),
+        "768 x 768": (768, 768),
+        "1024 x 1024": (1024, 1024),
+        "832 x 480 - 16:9 low": (832, 480),
+        "1024 x 576 - 16:9": (1024, 576),
+        "1280 x 704 - 16:9 wide": (1280, 704),
+        "480 x 832 - 9:16 low": (480, 832),
+        "576 x 1024 - 9:16": (576, 1024),
+        "704 x 1280 - 9:16 tall": (704, 1280),
+        "768 x 1344 - 9:16 tall": (768, 1344),
+        "896 x 672 - 4:3": (896, 672),
+        "672 x 896 - 3:4": (672, 896),
+    }
+    SNAP_MODES = ["nearest", "floor", "ceil"]
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "preset": (list(cls.PRESETS.keys()), {"default": "custom"}),
+                "width": (
+                    "INT",
+                    {
+                        "default": 512,
+                        "min": 1,
+                        "max": MAX_RESOLUTION,
+                        "step": 1,
+                        "tooltip": (
+                            "Used when preset is custom. Unsafe values are "
+                            "snapped internally."
+                        ),
+                    },
+                ),
+                "height": (
+                    "INT",
+                    {
+                        "default": 512,
+                        "min": 1,
+                        "max": MAX_RESOLUTION,
+                        "step": 1,
+                        "tooltip": (
+                            "Used when preset is custom. Unsafe values are "
+                            "snapped internally."
+                        ),
+                    },
+                ),
+                "snap": (
+                    cls.SNAP_MODES,
+                    {
+                        "default": "nearest",
+                        "tooltip": "How to quantize width and height to the selected divisor.",
+                    },
+                ),
+                "divisible_by": (
+                    "INT",
+                    {
+                        "default": 32,
+                        "min": 1,
+                        "max": 1024,
+                        "step": 1,
+                    },
+                ),
+                "swap": ("BOOLEAN", {"default": False}),
+            },
+        }
+
+    RETURN_TYPES = ("INT", "INT", "FLOAT", "FLOAT", "STRING")
+    RETURN_NAMES = ("width", "height", "width_float", "height_float", "summary")
+    FUNCTION = "snap_resolution"
+    CATEGORY = "EnviralDesign/video"
+    DESCRIPTION = """
+Turns a preset or typed custom resolution into divisor-safe dimensions for WAN
+video workflows.
+"""
+
+    @classmethod
+    def validate_inputs(cls, preset, width, height, snap, divisible_by, **kwargs):
+        if preset not in cls.PRESETS:
+            return f"preset must be one of: {', '.join(cls.PRESETS)}"
+        if snap not in cls.SNAP_MODES:
+            return f"snap must be one of: {', '.join(cls.SNAP_MODES)}"
+        if int(width) < 1 or int(height) < 1:
+            return "width and height must be positive"
+        if int(divisible_by) < 1:
+            return "divisible_by must be positive"
+        return True
+
+    @staticmethod
+    def _snap_dimension(value, divisor, snap):
+        value = max(1, int(value))
+        divisor = max(1, int(divisor))
+
+        if snap == "floor":
+            snapped = (value // divisor) * divisor
+        elif snap == "ceil":
+            snapped = ((value + divisor - 1) // divisor) * divisor
+        else:
+            snapped = ((value + divisor // 2) // divisor) * divisor
+
+        max_safe = max(divisor, (MAX_RESOLUTION // divisor) * divisor)
+        return max(divisor, min(max_safe, snapped))
+
+    @staticmethod
+    def _summary(width, height, divisor, source_width, source_height):
+        aspect_gcd = math.gcd(width, height)
+        aspect_width = width // aspect_gcd
+        aspect_height = height // aspect_gcd
+        megapixels = (width * height) / 1_000_000
+        summary = (
+            f"{width} x {height} | {megapixels:.2f} MP | "
+            f"{aspect_width}:{aspect_height} | div{divisor}"
+        )
+        if width != source_width or height != source_height:
+            summary += f" | from {source_width} x {source_height}"
+        return summary
+
+    def snap_resolution(self, preset, width, height, snap, divisible_by, swap=False):
+        preset_size = self.PRESETS[preset]
+        if preset_size is None:
+            source_width, source_height = int(width), int(height)
+        else:
+            source_width, source_height = preset_size
+
+        if swap:
+            source_width, source_height = source_height, source_width
+
+        divisor = max(1, int(divisible_by))
+        snapped_width = self._snap_dimension(source_width, divisor, snap)
+        snapped_height = self._snap_dimension(source_height, divisor, snap)
+        summary = self._summary(
+            snapped_width,
+            snapped_height,
+            divisor,
+            source_width,
+            source_height,
+        )
+
+        return (
+            snapped_width,
+            snapped_height,
+            float(snapped_width),
+            float(snapped_height),
+            summary,
+        )
+
+
+NODE_CLASS_MAPPINGS["EnviralWanResolutionSnap"] = EnviralWanResolutionSnap
+NODE_DISPLAY_NAME_MAPPINGS["EnviralWanResolutionSnap"] = "WAN Resolution Snap"

@@ -85,6 +85,26 @@ When enabled, the patched model turns full FP16 accumulation on before model
 execution and turns it back off during cleanup. When disabled, it forces the
 setting off before model execution.
 
+### `WAN Resolution Snap`
+
+Converts a preset or custom typed resolution into divisor-safe dimensions for
+WAN video workflows.
+
+Inputs:
+
+- `preset`: `custom` or common square, landscape, portrait, and 4:3 presets
+- `width` and `height`: freeform custom dimensions, used when `preset` is
+  `custom`
+- `snap`: `nearest`, `floor`, or `ceil`
+- `divisible_by`: output divisor, defaulting to `32`
+- `swap`: swaps width and height before snapping
+
+Outputs:
+
+- `width` and `height` as integers
+- `width_float` and `height_float` for nodes that expect float sockets
+- `summary`, such as `768 x 1344 | 1.03 MP | 4:7 | div32`
+
 ### `LM Studio Unified (URL + API Key)`
 
 Sends text, an image, or both to an LM Studio OpenAI-compatible chat endpoint.
