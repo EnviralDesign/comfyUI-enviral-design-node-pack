@@ -54,6 +54,23 @@ The mode input is a dropdown, but it also accepts linked strings such as
 combo nodes that output strings. Optional masks are transformed with the same
 geometry and the node returns `image`, `width`, `height`, and `mask`.
 
+### `Enviral Color Match V2`
+
+Transfers color from a reference image batch to a target image batch.
+
+Inputs:
+
+- `image_target`: image batch to recolor
+- `image_ref`: image batch to sample color from
+- `method`: `mkl`, `hm`, `reinhard`, `mvgd`, `hm-mvgd-hm`,
+  `hm-mkl-hm`, or `reinhard_lab_gpu`
+- `strength`: blend/extrapolation amount, where `0` is unchanged and `1` is
+  the matched result
+- `multithread`: enables threaded CPU processing for multi-image batches
+
+The CPU methods use `color-matcher`. The `reinhard_lab_gpu` method uses
+ComfyUI's Kornia dependency for Lab-space matching.
+
 ### `LM Studio Unified (URL + API Key)`
 
 Sends text, an image, or both to an LM Studio OpenAI-compatible chat endpoint.

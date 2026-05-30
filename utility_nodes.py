@@ -1,4 +1,7 @@
+import logging
+import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 import torch
 import torch.nn.functional as F
@@ -313,3 +316,165 @@ class EnviralImageResizeKit:
 
 NODE_CLASS_MAPPINGS["EnviralImageResizeKit"] = EnviralImageResizeKit
 NODE_DISPLAY_NAME_MAPPINGS["EnviralImageResizeKit"] = "Enviral Image Resize Kit"
+
+
+class EnviralColorMatchV2:
+    METHODS = [
+        "mkl",
+        "hm",
+        "reinhard",
+        "mvgd",
+        "hm-mvgd-hm",
+        "hm-mkl-hm",
+        "reinhard_lab_gpu",
+    ]
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image_target": ("IMAGE",),
+                "image_ref": ("IMAGE",),
+                "method": (cls.METHODS, {"default": "reinhard"}),
+                "strength": (
+                    "FLOAT",
+                    {
+                        "default": 1.0,
+                        "min": 0.0,
+                        "max": 10.0,
+                        "step": 0.01,
+                    },
+                ),
+                "multithread": ("BOOLEAN", {"default": True}),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("image",)
+    FUNCTION = "color_match"
+    CATEGORY = "EnviralDesign/image"
+    DESCRIPTION = """
+Transfers color from image_ref to image_target using color-matcher methods, with
+an optional Kornia Lab-space Reinhard path for GPU-friendly batch work.
+"""
+
+    @classmethod
+    def validate_inputs(cls, method, strength, **kwargs):
+        if method not in cls.METHODS:
+            return f"method must be one of: {', '.join(cls.METHODS)}"
+        if float(strength) < 0:
+            return "strength must be non-negative"
+        return True
+
+    @staticmethod
+    def _match_reference_batch(image_ref, batch_size):
+        ref_batch_size = image_ref.shape[0]
+        if ref_batch_size == batch_size:
+            return image_ref
+        if ref_batch_size > batch_size:
+            return image_ref[:batch_size]
+
+        indices = torch.arange(batch_size, device=image_ref.device).clamp_max(
+            ref_batch_size - 1
+        )
+        return image_ref.index_select(0, indices)
+
+    @classmethod
+    def _reinhard_lab_gpu(cls, image_target, image_ref, strength):
+        if image_target.shape[-1] != 3 or image_ref.shape[-1] != 3:
+            raise ValueError("reinhard_lab_gpu requires RGB IMAGE tensors with 3 channels.")
+
+        try:
+            import kornia
+            from comfy import model_management
+        except ImportError as err:
+            raise ImportError(
+                "reinhard_lab_gpu requires ComfyUI's kornia dependency to be available."
+            ) from err
+
+        device = model_management.get_torch_device()
+        batch_size = image_target.shape[0]
+        matched_ref = cls._match_reference_batch(image_ref, batch_size)
+
+        target_bchw = (
+            image_target.to(device=device, dtype=torch.float32)
+            .permute(0, 3, 1, 2)
+            .contiguous()
+        )
+        ref_bchw = (
+            matched_ref.to(device=device, dtype=torch.float32)
+            .permute(0, 3, 1, 2)
+            .contiguous()
+        )
+
+        target_lab = kornia.color.rgb_to_lab(target_bchw)
+        ref_lab = kornia.color.rgb_to_lab(ref_bchw)
+
+        target_flat = target_lab.flatten(start_dim=2)
+        ref_flat = ref_lab.flatten(start_dim=2)
+
+        target_std, target_mean = torch.std_mean(target_flat, dim=-1, keepdim=True, unbiased=False)
+        ref_std, ref_mean = torch.std_mean(ref_flat, dim=-1, keepdim=True, unbiased=False)
+        target_std = target_std.clamp_min(1e-6)
+
+        corrected_flat = (target_flat - target_mean) * (ref_std / target_std) + ref_mean
+        corrected_lab = corrected_flat.view_as(target_lab)
+        corrected_rgb = kornia.color.lab_to_rgb(corrected_lab)
+
+        out = (1.0 - strength) * target_bchw + strength * corrected_rgb
+        out = out.permute(0, 2, 3, 1).contiguous()
+        return out.cpu().float().clamp_(0.0, 1.0)
+
+    @classmethod
+    def _color_matcher_transfer(cls, image_target, image_ref, method, strength, multithread):
+        try:
+            from color_matcher import ColorMatcher
+        except ImportError as err:
+            raise ImportError(
+                "Color Match V2 requires color-matcher. "
+                "Install this node pack's declared dependencies."
+            ) from err
+
+        batch_size = image_target.shape[0]
+        ref_batch_size = image_ref.shape[0]
+
+        def process(index):
+            color_matcher = ColorMatcher()
+            target_np = image_target[index].detach().cpu().numpy()
+            ref_np = image_ref[min(index, ref_batch_size - 1)].detach().cpu().numpy()
+
+            try:
+                matched_np = color_matcher.transfer(src=target_np, ref=ref_np, method=method)
+                if strength != 1.0:
+                    matched_np = target_np + strength * (matched_np - target_np)
+                return torch.from_numpy(matched_np)
+            except Exception as err:
+                logging.warning("Color Match V2 item %s failed: %s", index, err)
+                return torch.from_numpy(target_np)
+
+        if bool(multithread) and batch_size > 1:
+            max_workers = min(os.cpu_count() or 1, batch_size)
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                out = list(executor.map(process, range(batch_size)))
+        else:
+            out = [process(index) for index in range(batch_size)]
+
+        return torch.stack(out, dim=0).to(dtype=torch.float32).clamp_(0.0, 1.0)
+
+    def color_match(self, image_target, image_ref, method, strength=1.0, multithread=True):
+        strength = float(strength)
+        if strength == 0.0:
+            return (image_target,)
+
+        if method == "reinhard_lab_gpu":
+            return (self._reinhard_lab_gpu(image_target, image_ref, strength),)
+
+        return (
+            self._color_matcher_transfer(
+                image_target, image_ref, method, strength, multithread
+            ),
+        )
+
+
+NODE_CLASS_MAPPINGS["EnviralColorMatchV2"] = EnviralColorMatchV2
+NODE_DISPLAY_NAME_MAPPINGS["EnviralColorMatchV2"] = "Enviral Color Match V2"
