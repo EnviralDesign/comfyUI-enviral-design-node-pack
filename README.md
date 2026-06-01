@@ -6,19 +6,19 @@ The goal of this pack is to keep genuinely useful glue nodes in one place
 without pulling in a large third-party custom-node bundle just to get one tiny
 piece of functionality.
 
-## Companion use with NLA AI Video Creator
+## Companion use with LatentSlate
 
-This pack is intended to be a stable companion utility pack for NLA AI Video
-Creator-oriented ComfyUI workflows while remaining useful on its own.
+This pack is intended to be a stable companion utility pack for
+LatentSlate-oriented ComfyUI workflows while remaining useful on its own.
 
 The nodes here are intentionally small, stable, and dependency-light. They cover
 workflow glue that is useful around provider-driven image generation,
 image-to-video, resizing, resolution snapping, color matching, local LLM calls,
 and narrow PyTorch model-setting patches.
 
-This repo does not claim to be a required dependency for NLA AI Video Creator.
-If an NLA workflow package needs one of these nodes, that workflow should list
-the dependency explicitly. Planned workflow package notes live in
+This repo does not claim to be a required dependency for LatentSlate.
+If a LatentSlate workflow package needs one of these nodes, that workflow should
+list the dependency explicitly. Planned workflow package notes live in
 [`workflows/README.md`](workflows/README.md).
 
 ## Included

@@ -1,13 +1,13 @@
 ---
-name: NLA integration request
-about: Request a companion utility or workflow helper for NLA AI Video Creator
-title: "[NLA] "
-labels: ["enhancement", "nla"]
+name: LatentSlate integration request
+about: Request a companion utility or workflow helper for LatentSlate
+title: "[LatentSlate] "
+labels: ["enhancement", "latentslate"]
 ---
 
 ## Integration request
 
-What NLA AI Video Creator workflow or integration should this node pack support?
+What LatentSlate workflow or integration should this node pack support?
 
 ## Use case
 
@@ -17,8 +17,8 @@ Describe the user workflow and why this belongs in this small utility pack.
 
 - [ ] Existing workflow JSON is available
 - [ ] Planned workflow only
-- [ ] NLA project currently depends on this node pack
-- [ ] NLA project does not currently depend on this node pack
+- [ ] LatentSlate project currently depends on this node pack
+- [ ] LatentSlate project does not currently depend on this node pack
 
 ## Needed inputs or outputs
 

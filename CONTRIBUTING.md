@@ -17,8 +17,8 @@ Thanks for helping keep this pack small and stable.
   release.
 - Provide before/after workflow examples when possible, especially for image
   resizing, snapping, color matching, and provider-compatibility helpers.
-- Keep standalone ComfyUI use valid. NLA-oriented helpers should still make
-  sense outside NLA AI Video Creator workflows.
+- Keep standalone ComfyUI use valid. LatentSlate-oriented helpers should still
+  make sense outside LatentSlate workflows.
 
 ## Compatibility Expectations
 

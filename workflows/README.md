@@ -41,7 +41,7 @@ Intended scope:
 - provide focused helper workflows for resizing, padding, cropping, and
   resolution snapping
 - show `Enviral Color Match V2` before/after usage with a reference image
-- keep examples independent from NLA AI Video Creator so they remain useful for
+- keep examples independent from LatentSlate so they remain useful for
   standalone ComfyUI users
 
 ## Compatibility Notes

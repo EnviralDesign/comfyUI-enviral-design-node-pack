@@ -1,16 +1,16 @@
-# NLA Compatibility
+# LatentSlate Compatibility
 
-This repo is positioned as a stable companion utility/node pack for NLA AI
-Video Creator-oriented ComfyUI workflows. It is not documented here as a hard
-runtime dependency of NLA AI Video Creator.
+This repo is positioned as a stable companion utility/node pack for
+LatentSlate-oriented ComfyUI workflows. It is not documented here as a hard
+runtime dependency of LatentSlate.
 
-If a specific NLA workflow package requires this pack, that workflow package
-should say so directly and list the exact nodes it uses.
+If a specific LatentSlate workflow package requires this pack, that workflow
+package should say so directly and list the exact nodes it uses.
 
 ## What Currently Works
 
 The current node pack exposes small utility nodes that are useful in
-NLA-oriented ComfyUI workflows and in standalone ComfyUI workflows:
+LatentSlate-oriented ComfyUI workflows and in standalone ComfyUI workflows:
 
 - `Text Split (Delimiter)` for fixed-output prompt or metadata splitting.
 - `Lazy Index Switch` for lazy selection between up to 20 optional inputs.
@@ -35,10 +35,10 @@ The following workflow packages are planned but not currently bundled:
 See [`../workflows/README.md`](../workflows/README.md) for the current workflow
 package status.
 
-## Stability Requirements for NLA-Oriented Workflows
+## Stability Requirements for LatentSlate-Oriented Workflows
 
-To remain a reliable companion for NLA-oriented workflows, these surfaces should
-remain stable:
+To remain a reliable companion for LatentSlate-oriented workflows, these
+surfaces should remain stable:
 
 - node class mapping keys in `NODE_CLASS_MAPPINGS`
 - display names in `NODE_DISPLAY_NAME_MAPPINGS`
@@ -60,5 +60,5 @@ Breaking any of these should be treated as a saved-workflow compatibility risk.
 
 - Do not make this repo a large provider workflow bundle.
 - Do not add broad all-in-one orchestration nodes.
-- Do not imply NLA AI Video Creator requires this repo unless that dependency is
-  present in the NLA project or in a specific NLA workflow package.
+- Do not imply LatentSlate requires this repo unless that dependency is present
+  in the LatentSlate project or in a specific LatentSlate workflow package.
