@@ -97,6 +97,39 @@ The CPU methods use `color-matcher`. The `reinhard_lab_gpu` method uses
 ComfyUI's Kornia dependency for Lab-space matching and requires both inputs to
 be RGB IMAGE tensors with 3 channels.
 
+### `Enviral Load LoRA`
+
+Native-style LoRA loader that keeps ComfyUI's LoRA application behavior but
+allows `lora_name` to be driven by a linked string.
+
+Inputs:
+
+- `model`: diffusion model to patch
+- `clip`: CLIP model to patch
+- `lora_name`: dropdown or linked string matching a LoRA path known to ComfyUI
+- `strength_model`: diffusion model LoRA strength
+- `strength_clip`: CLIP LoRA strength
+
+Outputs:
+
+- patched `model`
+- patched `clip`
+
+### `Enviral Load LoRA (Model Only)`
+
+Model-only variant for workflows such as WAN where the LoRA chain patches the
+diffusion model without a CLIP connection.
+
+Inputs:
+
+- `model`: diffusion model to patch
+- `lora_name`: dropdown or linked string matching a LoRA path known to ComfyUI
+- `strength_model`: diffusion model LoRA strength
+
+Output:
+
+- patched `model`
+
 ### `Model Patch Torch Settings`
 
 Experimental node that patches a compatible ComfyUI `MODEL` with callbacks for
