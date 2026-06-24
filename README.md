@@ -54,6 +54,29 @@ Behavior:
 - pairs with combo-style nodes that expose an `INDEX` output
 - reports a clear validation error if the selected input is not connected
 
+### Typed Name Selectors
+
+Adapts linked strings, including strings from ComfyUI's built-in `Custom Combo`
+node, into exact native combo output types for common model and sampler fields.
+
+Included nodes:
+
+- `Enviral Sampler Name`
+- `Enviral Scheduler Name`
+- `Enviral Checkpoint Name`
+- `Enviral VAE Name`
+- `Enviral LoRA Name`
+
+Behavior:
+
+- each node has a normal dropdown for its native ComfyUI option list
+- each node also accepts a linked string matching one current ComfyUI option
+- the output socket uses the exact native combo type expected by downstream
+  nodes such as `KSampler`, `Load Checkpoint`, `Load VAE`, and native LoRA
+  loaders
+- invalid linked strings fail validation before the downstream loader or sampler
+  runs
+
 ### `Enviral Image Resize Kit`
 
 Resizes an image with a small set of explicit workflow-friendly modes:
