@@ -93,6 +93,8 @@ class _NameSelectorBase:
 
     @classmethod
     def VALIDATE_INPUTS(cls, **kwargs):
+        if kwargs.get(cls.INPUT_NAME) is None:
+            return True
         try:
             cls._resolve_choice(kwargs.get(cls.INPUT_NAME))
         except Exception as err:

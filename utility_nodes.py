@@ -251,6 +251,8 @@ class EnviralImageResizeKit:
 
     @classmethod
     def validate_inputs(cls, mode, width, height, letterbox_color, **kwargs):
+        if mode is None:
+            return True
         try:
             normalized_mode = cls._normalize_mode(mode)
             if normalized_mode != "pass-through":

@@ -36,6 +36,8 @@ class _EnviralLoraLoaderBase:
 
     @classmethod
     def validate_inputs(cls, lora_name, **kwargs):
+        if lora_name is None:
+            return True
         try:
             cls._resolve_lora_path(lora_name)
         except Exception as err:
