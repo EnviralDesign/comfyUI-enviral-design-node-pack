@@ -66,6 +66,8 @@ Included nodes:
 - `Enviral Checkpoint Name`
 - `Enviral VAE Name`
 - `Enviral LoRA Name`
+- `Enviral Color Match Method`
+- `Enviral Color Match V2 Method`
 
 Behavior:
 
@@ -76,6 +78,11 @@ Behavior:
   loaders
 - invalid linked strings fail validation before the downstream loader or sampler
   runs
+
+Use `Enviral Color Match Method` for legacy ColorMatch nodes with CPU methods:
+`mkl`, `hm`, `reinhard`, `mvgd`, `hm-mvgd-hm`, and `hm-mkl-hm`.
+Use `Enviral Color Match V2 Method` for V2 color match nodes that also expose
+`reinhard_lab_gpu`.
 
 ### `Enviral Image Resize Kit`
 
@@ -119,6 +126,8 @@ Inputs:
 The CPU methods use `color-matcher`. The `reinhard_lab_gpu` method uses
 ComfyUI's Kornia dependency for Lab-space matching and requires both inputs to
 be RGB IMAGE tensors with 3 channels.
+The method input can be driven by `Enviral Color Match V2 Method` when the
+choice needs to come from a string-producing node.
 
 ### `Enviral Load LoRA`
 

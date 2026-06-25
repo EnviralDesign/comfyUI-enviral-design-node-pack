@@ -363,6 +363,8 @@ an optional Kornia Lab-space Reinhard path for GPU-friendly batch work.
 
     @classmethod
     def validate_inputs(cls, method, strength, **kwargs):
+        if method is None:
+            return True
         if method not in cls.METHODS:
             return f"method must be one of: {', '.join(cls.METHODS)}"
         if float(strength) < 0:

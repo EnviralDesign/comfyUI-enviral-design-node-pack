@@ -47,6 +47,21 @@ def _lora_names():
     return folder_paths.get_filename_list("loras")
 
 
+def _color_match_methods():
+    return [
+        "mkl",
+        "hm",
+        "reinhard",
+        "mvgd",
+        "hm-mvgd-hm",
+        "hm-mkl-hm",
+    ]
+
+
+def _color_match_v2_methods():
+    return _color_match_methods() + ["reinhard_lab_gpu"]
+
+
 class _NameSelectorBase:
     INPUT_NAME = "name"
     DISPLAY_LABEL = "Name"
@@ -174,12 +189,46 @@ Selects or adapts a LoRA name for native lora_name combo inputs.
     SEARCH_ALIASES = ["lora", "lora name", "load lora"]
 
 
+class EnviralColorMatchMethod(_NameSelectorBase):
+    INPUT_NAME = "method"
+    DISPLAY_LABEL = "Color match method"
+    OPTIONS_PROVIDER = staticmethod(_color_match_methods)
+    RETURN_TYPES = (_ExactComboOutput(_color_match_methods),)
+    RETURN_NAMES = ("method",)
+    OUTPUT_TOOLTIPS = ("Native-compatible ColorMatch method combo.",)
+    DESCRIPTION = """
+Selects or adapts a color match method for legacy ColorMatch method combo inputs.
+"""
+    SEARCH_ALIASES = ["color match", "color match method", "method"]
+
+
+class EnviralColorMatchV2Method(_NameSelectorBase):
+    INPUT_NAME = "method"
+    DISPLAY_LABEL = "Color match V2 method"
+    OPTIONS_PROVIDER = staticmethod(_color_match_v2_methods)
+    RETURN_TYPES = (_ExactComboOutput(_color_match_v2_methods),)
+    RETURN_NAMES = ("method",)
+    OUTPUT_TOOLTIPS = ("Native-compatible ColorMatch V2 method combo.",)
+    DESCRIPTION = """
+Selects or adapts a color match method for V2 method combo inputs.
+"""
+    SEARCH_ALIASES = [
+        "color match",
+        "color match method",
+        "color match v2",
+        "method",
+        "reinhard_lab_gpu",
+    ]
+
+
 NODE_CLASS_MAPPINGS = {
     "EnviralSamplerName": EnviralSamplerName,
     "EnviralSchedulerName": EnviralSchedulerName,
     "EnviralCheckpointName": EnviralCheckpointName,
     "EnviralVAEName": EnviralVAEName,
     "EnviralLoraName": EnviralLoraName,
+    "EnviralColorMatchMethod": EnviralColorMatchMethod,
+    "EnviralColorMatchV2Method": EnviralColorMatchV2Method,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -188,4 +237,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "EnviralCheckpointName": "Enviral Checkpoint Name",
     "EnviralVAEName": "Enviral VAE Name",
     "EnviralLoraName": "Enviral LoRA Name",
+    "EnviralColorMatchMethod": "Enviral Color Match Method",
+    "EnviralColorMatchV2Method": "Enviral Color Match V2 Method",
 }
