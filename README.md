@@ -73,11 +73,12 @@ Behavior:
 
 - each node has a normal dropdown for its native ComfyUI option list
 - each node also accepts a linked string matching one current ComfyUI option
+  exactly, or by an unambiguous case/path-separator/path-suffix match
 - the output socket uses the exact native combo type expected by downstream
   nodes such as `KSampler`, `Load Checkpoint`, `Load VAE`, and native LoRA
   loaders
 - invalid linked strings fail validation before the downstream loader or sampler
-  runs
+  runs, with close-match suggestions when available
 
 Use `Enviral Color Match Method` for legacy ColorMatch nodes with CPU methods:
 `mkl`, `hm`, `reinhard`, `mvgd`, `hm-mvgd-hm`, and `hm-mkl-hm`.

@@ -1,3 +1,6 @@
+import difflib
+
+
 class _ExactComboOutput(list):
     def __init__(self, options_provider):
         self._options_provider = options_provider
@@ -95,15 +98,74 @@ class _NameSelectorBase:
         return {"required": {cls.INPUT_NAME: cls._input()}}
 
     @classmethod
+    def _clean_value(cls, value):
+        return str(value or "").strip().strip("\"'")
+
+    @classmethod
+    def _normalized_value(cls, value):
+        return cls._clean_value(value).replace("\\", "/").casefold()
+
+    @classmethod
+    def _unique_match(cls, value, candidates, reason):
+        if len(candidates) == 1:
+            return candidates[0]
+        if len(candidates) > 1:
+            joined = ", ".join(repr(candidate) for candidate in candidates[:5])
+            if len(candidates) > 5:
+                joined += ", ..."
+            raise ValueError(
+                f"{cls.INPUT_NAME} value {value!r} matched multiple options by "
+                f"{reason}: {joined}"
+            )
+        return None
+
+    @classmethod
+    def _close_matches(cls, value, options):
+        return difflib.get_close_matches(value, options, n=5, cutoff=0.35)
+
+    @classmethod
+    def _invalid_choice_message(cls, value, options):
+        message = (
+            f"{cls.INPUT_NAME} value {value!r} must be one of the current "
+            "ComfyUI options"
+        )
+        matches = cls._close_matches(value, options)
+        if matches:
+            message += ". Closest matches: " + ", ".join(
+                repr(match) for match in matches
+            )
+        return message
+
+    @classmethod
     def _resolve_choice(cls, value):
-        value = str(value or "").strip()
+        value = cls._clean_value(value)
         options = cls._options()
         if not value:
             raise ValueError(f"{cls.INPUT_NAME} must not be empty")
         if value not in options:
-            raise ValueError(
-                f"{cls.INPUT_NAME} must be one of the current ComfyUI options"
+            normalized_value = cls._normalized_value(value)
+            normalized_matches = [
+                option
+                for option in options
+                if cls._normalized_value(option) == normalized_value
+            ]
+            match = cls._unique_match(
+                value, normalized_matches, "case/path normalization"
             )
+            if match is not None:
+                return match
+
+            suffix_matches = [
+                option
+                for option in options
+                if normalized_value.endswith("/" + cls._normalized_value(option))
+                or cls._normalized_value(option).endswith("/" + normalized_value)
+            ]
+            match = cls._unique_match(value, suffix_matches, "unique path suffix")
+            if match is not None:
+                return match
+
+            raise ValueError(cls._invalid_choice_message(value, options))
         return value
 
     @classmethod
