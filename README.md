@@ -54,6 +54,32 @@ Behavior:
 - pairs with combo-style nodes that expose an `INDEX` output
 - reports a clear validation error if the selected input is not connected
 
+### `Enviral Krea2 Seed Variance Enhancer`
+
+Adds seeded random noise to CLIP text conditioning embeddings for Krea2,
+Z-Image Turbo, and similar workflows where prompt-embedding variation can help
+break repeated compositions.
+
+Inputs:
+
+- `conditioning`: CLIP text conditioning to modify
+- `randomize_percent`: percentage of embedding values that receive noise
+- `strength`: noise scale; add `1,000,000,000` to use the upstream v2.1 seed
+  behavior
+- `noise_insert`: applies noisy conditioning to beginning steps, ending steps,
+  all steps, or disables the node
+- `steps_switchover_percent`: sampler-step split point when using beginning or
+  ending step modes
+- `seed`: deterministic seed for noise values and mask selection
+- `mask_starts_at` and `mask_percent`: protect part of the prompt embedding
+  from noise
+- `log_to_console`: prints tensor statistics and suggested strength ranges
+
+This is adapted from ChangeTheConstants' MIT-0 `SeedVarianceEnhancer` v2.2.0.
+The Enviral version avoids mutating PyTorch's global RNG state and guards
+untagged conditioning metadata so it behaves more predictably inside larger
+node chains.
+
 ### Typed Name Selectors
 
 Adapts linked strings, including strings from ComfyUI's built-in `Custom Combo`
