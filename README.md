@@ -90,6 +90,9 @@ Included nodes:
 - `Enviral Sampler Name`
 - `Enviral Scheduler Name`
 - `Enviral Checkpoint Name`
+- `Enviral Diffusion Model Name`
+- `Enviral CLIP Name`
+- `Enviral CLIP Type`
 - `Enviral VAE Name`
 - `Enviral LoRA Name`
 - `Enviral Color Match Method`
@@ -101,8 +104,8 @@ Behavior:
 - each node also accepts a linked string matching one current ComfyUI option
   exactly, or by an unambiguous case/path-separator/path-suffix match
 - the output socket uses the exact native combo type expected by downstream
-  nodes such as `KSampler`, `Load Checkpoint`, `Load VAE`, and native LoRA
-  loaders
+  nodes such as `KSampler`, `Load Checkpoint`, `Load Diffusion Model`,
+  `Load CLIP`, `Load VAE`, and native LoRA loaders
 - invalid linked strings fail validation before the downstream loader or sampler
   runs, with close-match suggestions when available
 

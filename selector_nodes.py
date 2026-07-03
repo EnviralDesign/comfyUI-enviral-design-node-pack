@@ -38,6 +38,24 @@ def _checkpoint_names():
     return folder_paths.get_filename_list("checkpoints")
 
 
+def _diffusion_model_names():
+    import folder_paths
+
+    return folder_paths.get_filename_list("diffusion_models")
+
+
+def _clip_model_names():
+    import folder_paths
+
+    return folder_paths.get_filename_list("text_encoders")
+
+
+def _clip_types():
+    import nodes
+
+    return nodes.CLIPLoader.INPUT_TYPES()["required"]["type"][0]
+
+
 def _vae_names():
     import nodes
 
@@ -225,6 +243,56 @@ Selects or adapts a checkpoint name for native ckpt_name combo inputs.
     SEARCH_ALIASES = ["checkpoint", "ckpt", "model name", "checkpoint name"]
 
 
+class EnviralDiffusionModelName(_NameSelectorBase):
+    INPUT_NAME = "unet_name"
+    DISPLAY_LABEL = "Diffusion model name"
+    OPTIONS_PROVIDER = staticmethod(_diffusion_model_names)
+    RETURN_TYPES = (_ExactComboOutput(_diffusion_model_names),)
+    RETURN_NAMES = ("unet_name",)
+    OUTPUT_TOOLTIPS = ("Native-compatible diffusion model name combo.",)
+    DESCRIPTION = """
+Selects or adapts a diffusion model name for native unet_name combo inputs.
+"""
+    SEARCH_ALIASES = [
+        "diffusion model",
+        "unet",
+        "unet name",
+        "load diffusion model",
+    ]
+
+
+class EnviralCLIPName(_NameSelectorBase):
+    INPUT_NAME = "clip_name"
+    DISPLAY_LABEL = "CLIP name"
+    OPTIONS_PROVIDER = staticmethod(_clip_model_names)
+    RETURN_TYPES = (_ExactComboOutput(_clip_model_names),)
+    RETURN_NAMES = ("clip_name",)
+    OUTPUT_TOOLTIPS = ("Native-compatible CLIP name combo.",)
+    DESCRIPTION = """
+Selects or adapts a CLIP text encoder name for native clip_name combo inputs.
+"""
+    SEARCH_ALIASES = [
+        "clip",
+        "clip name",
+        "text encoder",
+        "text encoder name",
+        "load clip",
+    ]
+
+
+class EnviralCLIPType(_NameSelectorBase):
+    INPUT_NAME = "type"
+    DISPLAY_LABEL = "CLIP type"
+    OPTIONS_PROVIDER = staticmethod(_clip_types)
+    RETURN_TYPES = (_ExactComboOutput(_clip_types),)
+    RETURN_NAMES = ("type",)
+    OUTPUT_TOOLTIPS = ("Native-compatible Load CLIP type combo.",)
+    DESCRIPTION = """
+Selects or adapts a CLIP loader type for native Load CLIP type combo inputs.
+"""
+    SEARCH_ALIASES = ["clip type", "load clip type", "krea2", "flux", "wan"]
+
+
 class EnviralVAEName(_NameSelectorBase):
     INPUT_NAME = "vae_name"
     DISPLAY_LABEL = "VAE name"
@@ -287,6 +355,9 @@ NODE_CLASS_MAPPINGS = {
     "EnviralSamplerName": EnviralSamplerName,
     "EnviralSchedulerName": EnviralSchedulerName,
     "EnviralCheckpointName": EnviralCheckpointName,
+    "EnviralDiffusionModelName": EnviralDiffusionModelName,
+    "EnviralCLIPName": EnviralCLIPName,
+    "EnviralCLIPType": EnviralCLIPType,
     "EnviralVAEName": EnviralVAEName,
     "EnviralLoraName": EnviralLoraName,
     "EnviralColorMatchMethod": EnviralColorMatchMethod,
@@ -297,6 +368,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "EnviralSamplerName": "Enviral Sampler Name",
     "EnviralSchedulerName": "Enviral Scheduler Name",
     "EnviralCheckpointName": "Enviral Checkpoint Name",
+    "EnviralDiffusionModelName": "Enviral Diffusion Model Name",
+    "EnviralCLIPName": "Enviral CLIP Name",
+    "EnviralCLIPType": "Enviral CLIP Type",
     "EnviralVAEName": "Enviral VAE Name",
     "EnviralLoraName": "Enviral LoRA Name",
     "EnviralColorMatchMethod": "Enviral Color Match Method",
