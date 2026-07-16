@@ -177,6 +177,27 @@ Outputs:
 - patched `model`
 - patched `clip`
 
+### `Enviral Load LoRA (Filtered)`
+
+Native-style LoRA loader with a folder filter for workflow-specific LoRA lists.
+The folder and LoRA choices are derived from ComfyUI's current registered LoRA
+paths, including paths supplied through `extra_model_paths.yaml`.
+
+Inputs:
+
+- `model`: diffusion model to patch
+- `clip`: CLIP model to patch
+- `folder`: `All LoRAs` or any current LoRA folder prefix; nested folders are
+  included in their parent filter
+- `lora_name`: dropdown limited to the selected folder and its subfolders
+- `strength_model`: diffusion model LoRA strength
+- `strength_clip`: CLIP LoRA strength
+
+The node uses ComfyUI's normal combo refresh behavior. Refreshing node
+definitions re-enumerates LoRAs and folders without maintaining a separate list
+or cache. Saved selections are validated against both the current LoRA registry
+and selected folder before execution.
+
 ### `Enviral Load LoRA (Model Only)`
 
 Model-only variant for workflows such as WAN where the LoRA chain patches the

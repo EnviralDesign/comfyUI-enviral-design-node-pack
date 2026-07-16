@@ -1,3 +1,26 @@
+ALL_LORA_FOLDERS = "All LoRAs"
+
+
+def _normalize_lora_path(value):
+    return str(value or "").strip().replace("\\", "/").strip("/")
+
+
+def _lora_folder_prefixes(lora_names):
+    prefixes = set()
+    for lora_name in lora_names:
+        parts = _normalize_lora_path(lora_name).split("/")[:-1]
+        prefixes.update("/".join(parts[:index]) for index in range(1, len(parts) + 1))
+    return [ALL_LORA_FOLDERS, *sorted(prefixes, key=str.casefold)]
+
+
+def _lora_is_in_folder(lora_name, folder):
+    if folder == ALL_LORA_FOLDERS:
+        return True
+    normalized_name = _normalize_lora_path(lora_name).casefold()
+    normalized_folder = _normalize_lora_path(folder).casefold()
+    return bool(normalized_folder) and normalized_name.startswith(normalized_folder + "/")
+
+
 class _EnviralLoraLoaderBase:
     def __init__(self):
         self.loaded_lora = None
@@ -24,6 +47,35 @@ class _EnviralLoraLoaderBase:
                 ),
             },
         )
+
+    @classmethod
+    def _folder_input(cls):
+        return (
+            "STRING,COMBO",
+            {
+                "default": ALL_LORA_FOLDERS,
+                "widgetType": "COMBO",
+                "options": _lora_folder_prefixes(cls._lora_names()),
+                "tooltip": "Limits the LoRA dropdown to this folder and its subfolders.",
+            },
+        )
+
+    @classmethod
+    def _resolve_folder(cls, folder):
+        folder = str(folder or "").strip()
+        folders = _lora_folder_prefixes(cls._lora_names())
+        if folder in folders:
+            return folder
+
+        normalized_folder = _normalize_lora_path(folder).casefold()
+        matches = [
+            candidate
+            for candidate in folders
+            if _normalize_lora_path(candidate).casefold() == normalized_folder
+        ]
+        if len(matches) == 1:
+            return matches[0]
+        raise ValueError(f"folder value {folder!r} must be one of the current LoRA folders")
 
     @staticmethod
     def _resolve_lora_path(lora_name):
@@ -131,6 +183,65 @@ Native-style LoRA loader with a string-linkable LoRA dropdown.
         )
 
 
+class EnviralLoadLoraFiltered(EnviralLoadLora):
+    @classmethod
+    def INPUT_TYPES(cls):
+        required = super().INPUT_TYPES()["required"]
+        return {
+            "required": {
+                "model": required["model"],
+                "clip": required["clip"],
+                "folder": cls._folder_input(),
+                "lora_name": required["lora_name"],
+                "strength_model": required["strength_model"],
+                "strength_clip": required["strength_clip"],
+            },
+        }
+
+    FUNCTION = "load_lora_filtered"
+    DESCRIPTION = """
+LoRA loader with a folder-filtered dropdown that follows ComfyUI's current LoRA list.
+"""
+    SEARCH_ALIASES = [
+        "lora",
+        "load lora",
+        "filtered lora",
+        "folder lora",
+        "curated lora",
+    ]
+
+    @classmethod
+    def VALIDATE_INPUTS(cls, folder, lora_name, **kwargs):
+        try:
+            folder = cls._resolve_folder(folder)
+            cls._resolve_lora_path(lora_name)
+            if not _lora_is_in_folder(lora_name, folder):
+                return f"LoRA {lora_name!r} is not inside folder {folder!r}"
+        except Exception as err:
+            return str(err)
+        return True
+
+    @classmethod
+    def validate_inputs(cls, folder, lora_name, **kwargs):
+        return cls.VALIDATE_INPUTS(folder, lora_name, **kwargs)
+
+    def load_lora_filtered(
+        self,
+        model,
+        clip,
+        folder,
+        lora_name,
+        strength_model,
+        strength_clip,
+    ):
+        folder = self._resolve_folder(folder)
+        if not _lora_is_in_folder(lora_name, folder):
+            raise ValueError(f"LoRA {lora_name!r} is not inside folder {folder!r}")
+        return self.load_lora(
+            model, clip, lora_name, strength_model, strength_clip
+        )
+
+
 class EnviralLoadLoraModelOnly(_EnviralLoraLoaderBase):
     @classmethod
     def INPUT_TYPES(cls):
@@ -191,10 +302,12 @@ Native-style model-only LoRA loader with a string-linkable LoRA dropdown.
 
 NODE_CLASS_MAPPINGS = {
     "EnviralLoadLora": EnviralLoadLora,
+    "EnviralLoadLoraFiltered": EnviralLoadLoraFiltered,
     "EnviralLoadLoraModelOnly": EnviralLoadLoraModelOnly,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "EnviralLoadLora": "Enviral Load LoRA",
+    "EnviralLoadLoraFiltered": "Enviral Load LoRA (Filtered)",
     "EnviralLoadLoraModelOnly": "Enviral Load LoRA (Model Only)",
 }
