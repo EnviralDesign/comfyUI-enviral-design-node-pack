@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "enviral-design-node-pack"
-version = "0.1.20"
+version = "0.1.21"
 description = "Small, dependency-light ComfyUI utility nodes from Enviral Design."
 readme = "README.md"
 requires-python = ">=3.10"

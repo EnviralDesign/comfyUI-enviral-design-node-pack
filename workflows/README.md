@@ -7,6 +7,32 @@ JSON files.
 The goal is to keep examples small and provider-oriented: enough to show how
 the nodes connect, without turning this repo into a large workflow distribution.
 
+## Available Packages
+
+### MetaView novel-view synthesis (API format)
+
+File: `metaview_example_api.json` (ComfyUI **API-format** prompt graph — load via
+"Load (API Format)" or POST to `/prompt`).
+
+Demonstrates the full MetaView graph: `LoadImage` + `CLIPLoader` (Qwen2.5-VL,
+type `qwen_image`) + `VAELoader` (Qwen-Image VAE) → `TextEncodeQwenImageEdit`
+(trigger prompt, image, **no vae**) → `MetaView3DConditioning` (with
+`MetaViewDA3Loader` + vae; yaw -30 / pitch +15, auto radius) →
+`MetaViewSigmas` + `KSamplerSelect(euler)` + `SamplerCustom`
+(`MetaViewModelLoader`; 8 steps, CFG 1.0, seed 42) → `VAEDecode` → `SaveImage`.
+
+`MetaViewSigmas` emits the exact Qwen-Image FlowMatch schedule (pack-local SIGMAS
+node — no Comfy scheduler-table registration). Wire it into stock `SamplerCustom`.
+
+Per-node input/output docs and the wiring diagram (including the important
+reference-latent and negative-conditioning notes) are in
+`docs/metaview_nodes.md`. Model file locations are documented there too. Update
+the `model_name` / `clip_name` / `vae_name` / DA3 dir fields to match your
+installed filenames, and set `LoadImage.image` to your own source image.
+
+A polished UI-format (`.json` graph) workflow is intended to be co-built from
+this API graph.
+
 ## Planned Packages
 
 ### Image generation provider workflow

@@ -1,0 +1,117 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "metaview_test_1.png",
+      "upload": "image"
+    },
+    "_meta": { "title": "Load source image" }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen\\qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "type": "qwen_image"
+    },
+    "_meta": { "title": "Qwen2.5-VL text encoder" }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "qwen\\qwen_image_vae.safetensors"
+    },
+    "_meta": { "title": "Qwen-Image VAE" }
+  },
+  "4": {
+    "class_type": "TextEncodeQwenImageEdit",
+    "inputs": {
+      "clip": ["2", 0],
+      "prompt": "镜头视角转到指定位置",
+      "image": ["1", 0]
+    },
+    "_meta": { "title": "Encode trigger prompt (+image, NO vae)" }
+  },
+  "5": {
+    "class_type": "MetaViewDA3Loader",
+    "inputs": {
+      "giant_model": "da3_giant.safetensors",
+      "depth_model": "da3nested_giant_large.safetensors"
+    },
+    "_meta": { "title": "MetaView DA3 Loader" }
+  },
+  "6": {
+    "class_type": "MetaView3DConditioning",
+    "inputs": {
+      "conditioning": ["4", 0],
+      "da3_model": ["5", 0],
+      "image": ["1", 0],
+      "yaw": -30.0,
+      "pitch": 15.0,
+      "radius": 0.0,
+      "auto_radius": true,
+      "vae": ["3", 0]
+    },
+    "_meta": { "title": "MetaView 3D Conditioning (yaw -30 / pitch +15)" }
+  },
+  "7": {
+    "class_type": "MetaViewModelLoader",
+    "inputs": {
+      "model_name": "metaview_dit_fp8scaled.safetensors"
+    },
+    "_meta": { "title": "MetaView Model Loader" }
+  },
+  "8": {
+    "class_type": "TextEncodeQwenImageEdit",
+    "inputs": {
+      "clip": ["2", 0],
+      "prompt": ""
+    },
+    "_meta": { "title": "Empty negative conditioning (unused at CFG 1.0)" }
+  },
+  "12": {
+    "class_type": "MetaViewSigmas",
+    "inputs": {
+      "steps": 8,
+      "latent": ["6", 1]
+    },
+    "_meta": { "title": "MetaView Qwen-Image sigma schedule (8 steps)" }
+  },
+  "13": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "_meta": { "title": "Euler sampler" }
+  },
+  "9": {
+    "class_type": "SamplerCustom",
+    "inputs": {
+      "model": ["7", 0],
+      "add_noise": true,
+      "noise_seed": 42,
+      "cfg": 1.0,
+      "positive": ["6", 0],
+      "negative": ["8", 0],
+      "sampler": ["13", 0],
+      "sigmas": ["12", 0],
+      "latent_image": ["6", 1]
+    },
+    "_meta": { "title": "SamplerCustom (8 steps, CFG 1.0, MetaView sigmas)" }
+  },
+  "10": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["9", 0],
+      "vae": ["3", 0]
+    },
+    "_meta": { "title": "VAE Decode" }
+  },
+  "11": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": ["10", 0],
+      "filename_prefix": "metaview_e2e"
+    },
+    "_meta": { "title": "Save Image" }
+  }
+}

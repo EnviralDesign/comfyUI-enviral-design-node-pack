@@ -23,6 +23,29 @@ from .utility_nodes import (
     NODE_DISPLAY_NAME_MAPPINGS as UTILITY_NODE_DISPLAY_NAME_MAPPINGS,
 )
 
+# MetaView (novel-view synthesis) nodes. These modules import vendored helpers
+# package-relative with a top-level fallback (see metaview_model.py), so mirror
+# that pattern here: prefer the package-relative import, fall back to top-level
+# when the pack is loaded as a bare module directory.
+try:  # loaded as part of the node pack (package-relative)
+    from .metaview_model import (
+        NODE_CLASS_MAPPINGS as METAVIEW_MODEL_NODE_CLASS_MAPPINGS,
+        NODE_DISPLAY_NAME_MAPPINGS as METAVIEW_MODEL_NODE_DISPLAY_NAME_MAPPINGS,
+    )
+    from .metaview_conditioning import (
+        NODE_CLASS_MAPPINGS as METAVIEW_COND_NODE_CLASS_MAPPINGS,
+        NODE_DISPLAY_NAME_MAPPINGS as METAVIEW_COND_NODE_DISPLAY_NAME_MAPPINGS,
+    )
+except ImportError:  # loaded as a top-level module
+    from metaview_model import (
+        NODE_CLASS_MAPPINGS as METAVIEW_MODEL_NODE_CLASS_MAPPINGS,
+        NODE_DISPLAY_NAME_MAPPINGS as METAVIEW_MODEL_NODE_DISPLAY_NAME_MAPPINGS,
+    )
+    from metaview_conditioning import (
+        NODE_CLASS_MAPPINGS as METAVIEW_COND_NODE_CLASS_MAPPINGS,
+        NODE_DISPLAY_NAME_MAPPINGS as METAVIEW_COND_NODE_DISPLAY_NAME_MAPPINGS,
+    )
+
 NODE_CLASS_MAPPINGS = {
     **CONDITIONING_NODE_CLASS_MAPPINGS,
     **TEXT_NODE_CLASS_MAPPINGS,
@@ -30,6 +53,8 @@ NODE_CLASS_MAPPINGS = {
     **LORA_NODE_CLASS_MAPPINGS,
     **SELECTOR_NODE_CLASS_MAPPINGS,
     **UTILITY_NODE_CLASS_MAPPINGS,
+    **METAVIEW_MODEL_NODE_CLASS_MAPPINGS,
+    **METAVIEW_COND_NODE_CLASS_MAPPINGS,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -39,6 +64,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     **LORA_NODE_DISPLAY_NAME_MAPPINGS,
     **SELECTOR_NODE_DISPLAY_NAME_MAPPINGS,
     **UTILITY_NODE_DISPLAY_NAME_MAPPINGS,
+    **METAVIEW_MODEL_NODE_DISPLAY_NAME_MAPPINGS,
+    **METAVIEW_COND_NODE_DISPLAY_NAME_MAPPINGS,
 }
 
 WEB_DIRECTORY = "./web"
