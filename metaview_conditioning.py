@@ -185,10 +185,30 @@ class DA3ModelBundle:
                 f"first unexpected: {list(unexpected)[:3]}")
         return model.eval()
 
+    @staticmethod
+    def _request_vram(module, device):
+        """Ask ComfyUI's model manager to make room before a raw ``.to(device)``.
+
+        The DA3 models live outside comfy's managed-model registry, so without
+        this comfy has no reason to evict whatever it loaded last (typically
+        the ~9GB text encoder) before the DA3 pass claims VRAM.
+        """
+        device = torch.device(device)
+        if device.type != "cuda":
+            return
+        try:
+            from comfy import model_management
+        except Exception:
+            return
+        needed = sum(p.numel() * p.element_size() for p in module.parameters())
+        needed += sum(b.numel() * b.element_size() for b in module.buffers())
+        model_management.free_memory(needed + 2 * 1024 ** 3, device)
+
     def giant_to(self, device):
         if self._giant is None:
             LOGGER.info("[MetaView] loading DA3-GIANT from %s", self.giant_path)
             self._giant = self._load(self.giant_path)
+        self._request_vram(self._giant, device)
         self._giant.to(device=device)
         self._giant.device = torch.device(device)
         return self._giant
@@ -197,6 +217,7 @@ class DA3ModelBundle:
         if self._depth is None:
             LOGGER.info("[MetaView] loading DA3 depth model from %s", self.depth_path)
             self._depth = self._load(self.depth_path)
+        self._request_vram(self._depth, device)
         self._depth.to(device=device)
         self._depth.device = torch.device(device)
         return self._depth
