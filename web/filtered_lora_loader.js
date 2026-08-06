@@ -49,6 +49,17 @@ function getWidget(node, name) {
     return node.widgets?.find((widget) => widget.name === name);
 }
 
+function getInputOptions(nodeData, name) {
+    const input = nodeData?.input?.required?.[name] ?? nodeData?.input?.optional?.[name];
+    if (!Array.isArray(input)) {
+        return null;
+    }
+    if (Array.isArray(input[0])) {
+        return input[0];
+    }
+    return Array.isArray(input[1]?.options) ? input[1].options : null;
+}
+
 function getBankWidgetName(name, bankIndex) {
     return bankIndex === 1 ? name : `${name}_${bankIndex}`;
 }
@@ -244,6 +255,33 @@ function configureFilter(node) {
     node.onRemoved = function () {
         this.enviralAllowListSource?.enviralLoraFilterTargets?.delete(this);
         return onRemoved?.apply(this, arguments);
+    };
+
+    const refreshComboInNode = node.refreshComboInNode;
+    node.refreshComboInNode = function (nodeDefs) {
+        const result = refreshComboInNode?.apply(this, arguments);
+        const nodeData = nodeDefs?.[NODE_NAME];
+        const folders = getInputOptions(nodeData, "folder");
+        const loras = getInputOptions(nodeData, "lora_name");
+
+        if (folders) {
+            folderWidget.options.values = folders;
+            if (!folders.includes(folderWidget.value)) {
+                folderWidget.value = folders.includes(ALL_FOLDERS)
+                    ? ALL_FOLDERS
+                    : (folders[0] ?? ALL_FOLDERS);
+            }
+        }
+        if (loras) {
+            for (let bankIndex = 1; bankIndex <= MAX_BANKS; bankIndex += 1) {
+                const loraWidget = getWidget(this, getBankWidgetName("lora_name", bankIndex));
+                if (loraWidget) {
+                    loraWidget.options.values = loras;
+                }
+            }
+        }
+        this.enviralSyncLoraFilter?.();
+        return result;
     };
 
     node.enviralSyncLoraFilter = sync;

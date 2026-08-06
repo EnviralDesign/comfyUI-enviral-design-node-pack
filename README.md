@@ -186,10 +186,10 @@ Outputs:
 - `lora_list`: newline-separated final dropdown options; names are relative to
   the selected folder, or include full relative paths under `All LoRAs`
 
-The node uses ComfyUI's normal combo refresh behavior. Refreshing node
-definitions re-enumerates LoRAs and folders without maintaining a separate list
-or cache. Saved selections are validated against both the current LoRA registry
-and selected folder before execution.
+The node uses ComfyUI's normal combo refresh behavior. Press `R` on the canvas
+or use **Refresh Node Definitions** to re-enumerate LoRAs and folders, then
+reapply the folder and allow-list filters. Saved selections are preserved when
+still valid and otherwise move to the first visible option.
 
 The earlier standard and model-only Enviral LoRA loaders remain registered for
 existing workflows but are deprecated and hidden from normal node discovery.
