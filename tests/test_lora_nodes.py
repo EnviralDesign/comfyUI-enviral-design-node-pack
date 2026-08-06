@@ -92,6 +92,7 @@ class LoraNodeTests(unittest.TestCase):
             module.MAX_LORA_BANKS,
         )
         self.assertIn("lora_name_5", input_types["optional"])
+        self.assertTrue(input_types["optional"]["allow_list"][1]["forceInput"])
         self.assertEqual(
             input_types["optional"]["strength_model_2"][1]["default"], 0.0
         )
@@ -107,7 +108,7 @@ class LoraNodeTests(unittest.TestCase):
 
         self.assertIs(
             module.EnviralLoadLoraFiltered.VALIDATE_INPUTS(
-                "not-a-folder",
+                "All LoRAs",
                 "",
                 strength_model=0,
                 strength_clip=0,
@@ -122,7 +123,7 @@ class LoraNodeTests(unittest.TestCase):
             loader.load_lora_filtered(
                 model,
                 clip,
-                "not-a-folder",
+                "All LoRAs",
                 "",
                 0,
                 0,
@@ -131,8 +132,74 @@ class LoraNodeTests(unittest.TestCase):
                 strength_model_2=0,
                 strength_clip_2=0,
             ),
-            (model, clip),
+            (model, clip, "wan/one.safetensors"),
         )
+
+    def test_allow_list_matches_display_names_and_full_paths(self):
+        module = load_lora_nodes(
+            [
+                "wan/one.safetensors",
+                "wan/nested/two.safetensors",
+                "sdxl/other.safetensors",
+            ]
+        )
+
+        self.assertEqual(
+            module.EnviralLoadLoraFiltered._available_loras(
+                "wan",
+                "one.safetensors\nWAN/NESTED/TWO.SAFETENSORS\nmissing.safetensors",
+            ),
+            [
+                ("wan/one.safetensors", "one.safetensors"),
+                ("wan/nested/two.safetensors", "nested/two.safetensors"),
+            ],
+        )
+
+    def test_filtered_loader_outputs_visible_lora_list(self):
+        module = load_lora_nodes(
+            [
+                "wan/one.safetensors",
+                "wan/nested/two.safetensors",
+                "sdxl/other.safetensors",
+            ]
+        )
+        loader = module.EnviralLoadLoraFiltered()
+
+        self.assertEqual(
+            loader.load_lora_filtered(
+                "model",
+                "clip",
+                "wan",
+                "",
+                0,
+                0,
+                allow_list="nested/two.safetensors\none.safetensors",
+            ),
+            (
+                "model",
+                "clip",
+                "one.safetensors\nnested/two.safetensors",
+            ),
+        )
+
+    def test_allow_list_rejects_active_bank_outside_list(self):
+        module = load_lora_nodes(["wan/one.safetensors", "wan/two.safetensors"])
+
+        self.assertEqual(
+            module.EnviralLoadLoraFiltered.VALIDATE_INPUTS(
+                "wan",
+                "wan/two.safetensors",
+                allow_list="one.safetensors",
+            ),
+            "LoRA 'wan/two.safetensors' is not included by the current allow-list",
+        )
+
+    def test_filtered_loader_is_the_only_non_deprecated_lora_loader(self):
+        module = load_lora_nodes([])
+
+        self.assertTrue(module.EnviralLoadLora.DEPRECATED)
+        self.assertFalse(module.EnviralLoadLoraFiltered.DEPRECATED)
+        self.assertTrue(module.EnviralLoadLoraModelOnly.DEPRECATED)
 
     def test_filtered_loader_applies_active_banks_in_order(self):
         module = load_lora_nodes(
@@ -180,6 +247,7 @@ class LoraNodeTests(unittest.TestCase):
             (
                 "model:wan/one.safetensors:wan/three.safetensors",
                 "clip:wan/one.safetensors:wan/three.safetensors",
+                "one.safetensors\nthree.safetensors",
             ),
         )
 

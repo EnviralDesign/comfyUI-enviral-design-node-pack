@@ -161,27 +161,10 @@ choice needs to come from a string-producing node.
 
 ### `Enviral Load LoRA`
 
-Native-style LoRA loader that keeps ComfyUI's LoRA application behavior but
-allows `lora_name` to be driven by a linked string.
-
-Inputs:
-
-- `model`: diffusion model to patch
-- `clip`: CLIP model to patch
-- `lora_name`: dropdown or linked string matching a LoRA path known to ComfyUI
-- `strength_model`: diffusion model LoRA strength
-- `strength_clip`: CLIP LoRA strength
-
-Outputs:
-
-- patched `model`
-- patched `clip`
-
-### `Enviral Load LoRA (Filtered)`
-
-Native-style LoRA loader with a folder filter for workflow-specific LoRA lists.
-The folder and LoRA choices are derived from ComfyUI's current registered LoRA
-paths, including paths supplied through `extra_model_paths.yaml`.
+LoRA loader with folder and text allow-list filtering, up to five independently
+bypassable LoRA banks, and a text output containing the final visible list. The
+folder and LoRA choices come from ComfyUI's registered LoRA paths, including
+paths supplied through `extra_model_paths.yaml`.
 
 Inputs:
 
@@ -189,29 +172,27 @@ Inputs:
 - `clip`: CLIP model to patch
 - `folder`: `All LoRAs` or any current LoRA folder prefix; nested folders are
   included in their parent filter
-- `lora_name`: dropdown limited to the selected folder and its subfolders
-- `strength_model`: diffusion model LoRA strength
-- `strength_clip`: CLIP LoRA strength
+- `allow_list`: optional STRING input intended for ComfyUI's native
+  `Text (Multiline)` node; each non-empty line keeps an exact displayed name or
+  full relative LoRA path
+- `banks`: number of visible LoRA banks, from one to five
+- each bank has a LoRA dropdown plus separate model and CLIP strengths; a bank
+  is bypassed when both strengths are zero
+
+Outputs:
+
+- patched `model`
+- patched `clip`
+- `lora_list`: newline-separated final dropdown options; names are relative to
+  the selected folder, or include full relative paths under `All LoRAs`
 
 The node uses ComfyUI's normal combo refresh behavior. Refreshing node
 definitions re-enumerates LoRAs and folders without maintaining a separate list
 or cache. Saved selections are validated against both the current LoRA registry
 and selected folder before execution.
 
-### `Enviral Load LoRA (Model Only)`
-
-Model-only variant for workflows such as WAN where the LoRA chain patches the
-diffusion model without a CLIP connection.
-
-Inputs:
-
-- `model`: diffusion model to patch
-- `lora_name`: dropdown or linked string matching a LoRA path known to ComfyUI
-- `strength_model`: diffusion model LoRA strength
-
-Output:
-
-- patched `model`
+The earlier standard and model-only Enviral LoRA loaders remain registered for
+existing workflows but are deprecated and hidden from normal node discovery.
 
 ### `Model Patch Torch Settings`
 

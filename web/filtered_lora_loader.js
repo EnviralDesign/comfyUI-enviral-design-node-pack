@@ -36,6 +36,15 @@ function getLoraDisplayName(loraName, folder) {
     return normalizedName.slice(prefix.length);
 }
 
+function parseAllowList(value) {
+    return new Set(
+        String(value ?? "")
+            .split(/\r?\n/)
+            .map((line) => normalizePath(line).toLowerCase())
+            .filter(Boolean),
+    );
+}
+
 function getWidget(node, name) {
     return node.widgets?.find((widget) => widget.name === name);
 }
@@ -52,6 +61,24 @@ function getBankCount(node) {
     return Math.min(MAX_BANKS, Math.max(1, count));
 }
 
+function getConnectedAllowList(node) {
+    const slot = node.findInputSlot?.("allow_list");
+    const linkId = slot === undefined || slot < 0 ? null : node.inputs?.[slot]?.link;
+    const link = linkId == null ? null : app.graph?.links?.[linkId];
+    const sourceNode = link ? app.graph?.getNodeById?.(link.origin_id) : null;
+    const sourceWidget = sourceNode?.widgets?.find((widget) => widget.name === "value");
+    return { sourceWidget, value: sourceWidget?.value ?? "" };
+}
+
+function isAllowed(loraName, folder, allowed) {
+    if (allowed.size === 0) {
+        return true;
+    }
+    const fullName = normalizePath(loraName).toLowerCase();
+    const displayName = normalizePath(getLoraDisplayName(loraName, folder)).toLowerCase();
+    return allowed.has(fullName) || allowed.has(displayName);
+}
+
 function configureLoraFilter(node, folderWidget, loraWidget) {
     if (!Array.isArray(loraWidget.options?.values)) {
         return;
@@ -65,7 +92,12 @@ function configureLoraFilter(node, folderWidget, loraWidget) {
         configurable: true,
         enumerable: true,
         get() {
-            return allLoras.filter((name) => isInFolder(name, folderWidget.value));
+            const allowed = parseAllowList(getConnectedAllowList(node).value);
+            return allLoras.filter(
+                (name) =>
+                    isInFolder(name, folderWidget.value) &&
+                    isAllowed(name, folderWidget.value, allowed),
+            );
         },
         set(values) {
             if (Array.isArray(values)) {
@@ -137,6 +169,26 @@ function configureFilter(node) {
     }
 
     function sync() {
+        const { sourceWidget } = getConnectedAllowList(node);
+        if (node.enviralAllowListSource && node.enviralAllowListSource !== sourceWidget) {
+            node.enviralAllowListSource.enviralLoraFilterTargets?.delete(node);
+        }
+        node.enviralAllowListSource = sourceWidget;
+        if (sourceWidget) {
+            sourceWidget.enviralLoraFilterTargets ??= new Set();
+            sourceWidget.enviralLoraFilterTargets.add(node);
+            if (!sourceWidget.enviralLoraFilterWrapped) {
+                const originalCallback = sourceWidget.callback;
+                sourceWidget.callback = function (value) {
+                    const result = originalCallback?.apply(this, arguments);
+                    for (const target of sourceWidget.enviralLoraFilterTargets) {
+                        target.enviralSyncLoraFilter?.();
+                    }
+                    return result;
+                };
+                sourceWidget.enviralLoraFilterWrapped = true;
+            }
+        }
         for (const syncSelection of syncSelections) {
             syncSelection();
         }
@@ -160,8 +212,21 @@ function configureFilter(node) {
         return result;
     };
 
-    sync();
+    const onConnectionsChange = node.onConnectionsChange;
+    node.onConnectionsChange = function () {
+        const result = onConnectionsChange?.apply(this, arguments);
+        queueMicrotask(() => this.enviralSyncLoraFilter?.());
+        return result;
+    };
+
+    const onRemoved = node.onRemoved;
+    node.onRemoved = function () {
+        this.enviralAllowListSource?.enviralLoraFilterTargets?.delete(this);
+        return onRemoved?.apply(this, arguments);
+    };
+
     node.enviralSyncLoraFilter = sync;
+    sync();
 }
 
 app.registerExtension({

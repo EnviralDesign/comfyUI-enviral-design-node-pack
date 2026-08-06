@@ -22,6 +22,38 @@ def _lora_is_in_folder(lora_name, folder):
     return bool(normalized_folder) and normalized_name.startswith(normalized_folder + "/")
 
 
+def _lora_display_name(lora_name, folder):
+    normalized_name = _normalize_lora_path(lora_name)
+    if folder == ALL_LORA_FOLDERS:
+        return normalized_name
+    normalized_folder = _normalize_lora_path(folder)
+    return normalized_name[len(normalized_folder) + 1 :]
+
+
+def _parse_lora_allow_list(allow_list):
+    return {
+        _normalize_lora_path(line).casefold()
+        for line in str(allow_list or "").splitlines()
+        if _normalize_lora_path(line)
+    }
+
+
+def _filtered_lora_names(lora_names, folder, allow_list=""):
+    allowed = _parse_lora_allow_list(allow_list)
+    filtered = []
+    for lora_name in lora_names:
+        if not _lora_is_in_folder(lora_name, folder):
+            continue
+        display_name = _lora_display_name(lora_name, folder)
+        if allowed and not {
+            _normalize_lora_path(lora_name).casefold(),
+            _normalize_lora_path(display_name).casefold(),
+        } & allowed:
+            continue
+        filtered.append((lora_name, display_name))
+    return filtered
+
+
 class _EnviralLoraLoaderBase:
     def __init__(self):
         self.loaded_lora = None
@@ -114,6 +146,8 @@ class _EnviralLoraLoaderBase:
 
 
 class EnviralLoadLora(_EnviralLoraLoaderBase):
+    DEPRECATED = True
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -185,6 +219,8 @@ Native-style LoRA loader with a string-linkable LoRA dropdown.
 
 
 class EnviralLoadLoraFiltered(EnviralLoadLora):
+    DEPRECATED = False
+
     @staticmethod
     def _bank_input_name(input_name, bank_index):
         if bank_index == 1:
@@ -238,9 +274,25 @@ class EnviralLoadLoraFiltered(EnviralLoadLora):
             raise ValueError(f"LoRA {lora_name!r} is not inside folder {folder!r}")
 
     @classmethod
+    def _available_loras(cls, folder, allow_list=""):
+        return _filtered_lora_names(cls._lora_names(), folder, allow_list)
+
+    @classmethod
     def INPUT_TYPES(cls):
         required = super().INPUT_TYPES()["required"]
-        optional = {}
+        optional = {
+            "allow_list": (
+                "STRING",
+                {
+                    "forceInput": True,
+                    "multiline": True,
+                    "tooltip": (
+                        "Optional newline-separated LoRA allow-list. Connect ComfyUI's "
+                        "Text (Multiline) node; entries may use displayed names or full paths."
+                    ),
+                },
+            ),
+        }
         for bank_index in range(2, MAX_LORA_BANKS + 1):
             for input_name in ("lora_name", "strength_model", "strength_clip"):
                 input_type, options = required[input_name]
@@ -274,9 +326,16 @@ class EnviralLoadLoraFiltered(EnviralLoadLora):
             "optional": optional,
         }
 
+    RETURN_TYPES = ("MODEL", "CLIP", "STRING")
+    RETURN_NAMES = ("model", "clip", "lora_list")
+    OUTPUT_TOOLTIPS = (
+        "The modified diffusion model.",
+        "The modified CLIP model.",
+        "The visible LoRA options, one display name per line.",
+    )
     FUNCTION = "load_lora_filtered"
     DESCRIPTION = """
-LoRA loader with a shared folder filter and independently bypassable LoRA banks.
+LoRA loader with folder and text allow-list filters plus independently bypassable banks.
 """
     SEARCH_ALIASES = [
         "lora",
@@ -294,9 +353,14 @@ LoRA loader with a shared folder filter and independently bypassable LoRA banks.
         strength_model=1.0,
         strength_clip=1.0,
         bank_count=1,
+        allow_list="",
         **kwargs,
     ):
         try:
+            folder = cls._resolve_folder(folder)
+            available_loras = {
+                lora_name for lora_name, _ in cls._available_loras(folder, allow_list)
+            }
             banks = cls._bank_values(
                 lora_name,
                 strength_model,
@@ -312,9 +376,12 @@ LoRA loader with a shared folder filter and independently bypassable LoRA banks.
             if not active_banks:
                 return True
 
-            folder = cls._resolve_folder(folder)
             for bank_index, lora_name, _, _ in active_banks:
                 cls._validate_lora_bank(folder, lora_name, bank_index)
+                if lora_name not in available_loras:
+                    raise ValueError(
+                        f"LoRA {lora_name!r} is not included by the current allow-list"
+                    )
         except Exception as err:
             return str(err)
         return True
@@ -332,8 +399,13 @@ LoRA loader with a shared folder filter and independently bypassable LoRA banks.
         strength_model,
         strength_clip,
         bank_count=1,
+        allow_list="",
         **kwargs,
     ):
+        folder = self._resolve_folder(folder)
+        available_loras = self._available_loras(folder, allow_list)
+        available_paths = {lora_name for lora_name, _ in available_loras}
+        lora_list = "\n".join(display_name for _, display_name in available_loras)
         banks = self._bank_values(
             lora_name,
             strength_model,
@@ -345,18 +417,23 @@ LoRA loader with a shared folder filter and independently bypassable LoRA banks.
             bank for bank in banks if not self._is_bypassed(bank[2], bank[3])
         ]
         if not active_banks:
-            return (model, clip)
+            return (model, clip, lora_list)
 
-        folder = self._resolve_folder(folder)
         for bank_index, lora_name, strength_model, strength_clip in active_banks:
             self._validate_lora_bank(folder, lora_name, bank_index)
+            if lora_name not in available_paths:
+                raise ValueError(
+                    f"LoRA {lora_name!r} is not included by the current allow-list"
+                )
             model, clip = self.load_lora(
                 model, clip, lora_name, strength_model, strength_clip
             )
-        return (model, clip)
+        return (model, clip, lora_list)
 
 
 class EnviralLoadLoraModelOnly(_EnviralLoraLoaderBase):
+    DEPRECATED = True
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -421,7 +498,7 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "EnviralLoadLora": "Enviral Load LoRA",
-    "EnviralLoadLoraFiltered": "Enviral Load LoRA (Filtered)",
-    "EnviralLoadLoraModelOnly": "Enviral Load LoRA (Model Only)",
+    "EnviralLoadLora": "Enviral Load LoRA (Deprecated)",
+    "EnviralLoadLoraFiltered": "Enviral Load LoRA",
+    "EnviralLoadLoraModelOnly": "Enviral Load LoRA (Model Only, Deprecated)",
 }
