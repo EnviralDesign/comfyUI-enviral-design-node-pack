@@ -169,13 +169,13 @@ paths supplied through `extra_model_paths.yaml`.
 Inputs:
 
 - `model`: diffusion model to patch
-- `clip`: CLIP model to patch
+- `clip`: optional CLIP model to patch; leave disconnected for model-only LoRAs
 - `folder`: `All LoRAs` or any current LoRA folder prefix; nested folders are
   included in their parent filter
+- `banks`: number of visible LoRA banks, from one to five
 - `allow_list`: optional STRING input intended for ComfyUI's native
   `Text (Multiline)` node; each non-empty line keeps an exact displayed name or
   full relative LoRA path
-- `banks`: number of visible LoRA banks, from one to five
 - each bank has a LoRA dropdown plus separate model and CLIP strengths; a bank
   is bypassed when both strengths are zero
 

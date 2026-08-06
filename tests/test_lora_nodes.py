@@ -78,14 +78,27 @@ class LoraNodeTests(unittest.TestCase):
             list(input_types["required"]),
             [
                 "model",
-                "clip",
                 "folder",
+                "bank_count",
                 "lora_name",
                 "strength_model",
                 "strength_clip",
-                "bank_count",
             ],
         )
+        self.assertEqual(
+            input_types["required"]["lora_name"][1]["display_name"],
+            "lora_name 1",
+        )
+        self.assertEqual(
+            input_types["required"]["strength_model"][1]["display_name"],
+            "strength_model 1",
+        )
+        self.assertEqual(
+            input_types["required"]["strength_clip"][1]["display_name"],
+            "strength_clip 1",
+        )
+        self.assertEqual(list(input_types["optional"])[:2], ["clip", "allow_list"])
+        self.assertEqual(input_types["optional"]["clip"][0], "CLIP")
         self.assertEqual(input_types["required"]["bank_count"][1]["default"], 1)
         self.assertEqual(
             input_types["required"]["bank_count"][1]["max"],
@@ -122,11 +135,11 @@ class LoraNodeTests(unittest.TestCase):
         self.assertEqual(
             loader.load_lora_filtered(
                 model,
-                clip,
                 "All LoRAs",
                 "",
                 0,
                 0,
+                clip=clip,
                 bank_count=3,
                 lora_name_2="not/a/lora.safetensors",
                 strength_model_2=0,
@@ -168,11 +181,11 @@ class LoraNodeTests(unittest.TestCase):
         self.assertEqual(
             loader.load_lora_filtered(
                 "model",
-                "clip",
                 "wan",
                 "",
                 0,
                 0,
+                clip="clip",
                 allow_list="nested/two.safetensors\none.safetensors",
             ),
             (
@@ -215,11 +228,11 @@ class LoraNodeTests(unittest.TestCase):
         loader.load_lora = load_lora
         result = loader.load_lora_filtered(
             "model",
-            "clip",
             "wan",
             "wan/one.safetensors",
             1.0,
             0.0,
+            clip="clip",
             bank_count=3,
             lora_name_2="sdxl/other.safetensors",
             strength_model_2=0.0,
@@ -249,6 +262,36 @@ class LoraNodeTests(unittest.TestCase):
                 "clip:wan/one.safetensors:wan/three.safetensors",
                 "one.safetensors\nthree.safetensors",
             ),
+        )
+
+    def test_filtered_loader_allows_clip_to_be_disconnected(self):
+        module = load_lora_nodes(["wan/one.safetensors"])
+        loader = module.EnviralLoadLoraFiltered()
+
+        self.assertEqual(
+            loader.load_lora_filtered(
+                "model",
+                "wan",
+                "",
+                0,
+                0,
+            ),
+            ("model", None, "one.safetensors"),
+        )
+
+    def test_filtered_loader_ignores_clip_strength_without_clip(self):
+        module = load_lora_nodes(["wan/one.safetensors"])
+        loader = module.EnviralLoadLoraFiltered()
+
+        self.assertEqual(
+            loader.load_lora_filtered(
+                "model",
+                "wan",
+                "not/a/lora.safetensors",
+                0,
+                1,
+            ),
+            ("model", None, "one.safetensors"),
         )
 
 

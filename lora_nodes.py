@@ -281,6 +281,7 @@ class EnviralLoadLoraFiltered(EnviralLoadLora):
     def INPUT_TYPES(cls):
         required = super().INPUT_TYPES()["required"]
         optional = {
+            "clip": required["clip"],
             "allow_list": (
                 "STRING",
                 {
@@ -307,11 +308,7 @@ class EnviralLoadLoraFiltered(EnviralLoadLora):
         return {
             "required": {
                 "model": required["model"],
-                "clip": required["clip"],
                 "folder": cls._folder_input(),
-                "lora_name": required["lora_name"],
-                "strength_model": required["strength_model"],
-                "strength_clip": required["strength_clip"],
                 "bank_count": (
                     "INT",
                     {
@@ -320,6 +317,24 @@ class EnviralLoadLoraFiltered(EnviralLoadLora):
                         "max": MAX_LORA_BANKS,
                         "display_name": "banks",
                         "tooltip": "Number of LoRA banks shown and applied.",
+                    },
+                ),
+                "lora_name": (
+                    required["lora_name"][0],
+                    {**required["lora_name"][1], "display_name": "lora_name 1"},
+                ),
+                "strength_model": (
+                    required["strength_model"][0],
+                    {
+                        **required["strength_model"][1],
+                        "display_name": "strength_model 1",
+                    },
+                ),
+                "strength_clip": (
+                    required["strength_clip"][0],
+                    {
+                        **required["strength_clip"][1],
+                        "display_name": "strength_clip 1",
                     },
                 ),
             },
@@ -393,12 +408,12 @@ LoRA loader with folder and text allow-list filters plus independently bypassabl
     def load_lora_filtered(
         self,
         model,
-        clip,
         folder,
         lora_name,
         strength_model,
         strength_clip,
         bank_count=1,
+        clip=None,
         allow_list="",
         **kwargs,
     ):
@@ -413,6 +428,11 @@ LoRA loader with folder and text allow-list filters plus independently bypassabl
             bank_count,
             kwargs,
         )
+        if clip is None:
+            banks = [
+                (bank_index, lora_name, strength_model, 0.0)
+                for bank_index, lora_name, strength_model, _ in banks
+            ]
         active_banks = [
             bank for bank in banks if not self._is_bypassed(bank[2], bank[3])
         ]

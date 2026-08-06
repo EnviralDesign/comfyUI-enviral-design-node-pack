@@ -61,6 +61,27 @@ function getBankCount(node) {
     return Math.min(MAX_BANKS, Math.max(1, count));
 }
 
+function migrateLegacyWidgetValues(config) {
+    const values = config?.widgets_values;
+    if (!Array.isArray(values) || typeof values[1] !== "string") {
+        return config;
+    }
+
+    if (values.length >= 5 && Number.isInteger(values[4])) {
+        return {
+            ...config,
+            widgets_values: [values[0], values[4], ...values.slice(1, 4), ...values.slice(5)],
+        };
+    }
+    if (values.length === 4) {
+        return {
+            ...config,
+            widgets_values: [values[0], 1, ...values.slice(1)],
+        };
+    }
+    return config;
+}
+
 function getConnectedAllowList(node) {
     const slot = node.findInputSlot?.("allow_list");
     const linkId = slot === undefined || slot < 0 ? null : node.inputs?.[slot]?.link;
@@ -245,8 +266,10 @@ app.registerExtension({
         };
 
         const onConfigure = nodeType.prototype.onConfigure;
-        nodeType.prototype.onConfigure = function () {
-            const result = onConfigure?.apply(this, arguments);
+        nodeType.prototype.onConfigure = function (config) {
+            const args = [...arguments];
+            args[0] = migrateLegacyWidgetValues(config);
+            const result = onConfigure?.apply(this, args);
             queueMicrotask(() => this.enviralSyncLoraFilter?.());
             return result;
         };
