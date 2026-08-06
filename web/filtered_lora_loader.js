@@ -2,6 +2,8 @@ import { app } from "/scripts/app.js";
 
 const NODE_NAME = "EnviralLoadLoraFiltered";
 const ALL_FOLDERS = "All LoRAs";
+const MAX_BANKS = 5;
+const BANK_WIDGET_NAMES = ["lora_name", "strength_model", "strength_clip"];
 
 function normalizePath(value) {
     return String(value ?? "").trim().replaceAll("\\", "/").replace(/^\/+|\/+$/g, "");
@@ -38,10 +40,20 @@ function getWidget(node, name) {
     return node.widgets?.find((widget) => widget.name === name);
 }
 
-function configureFilter(node) {
-    const folderWidget = getWidget(node, "folder");
-    const loraWidget = getWidget(node, "lora_name");
-    if (!folderWidget || !loraWidget || !Array.isArray(loraWidget.options?.values)) {
+function getBankWidgetName(name, bankIndex) {
+    return bankIndex === 1 ? name : `${name}_${bankIndex}`;
+}
+
+function getBankCount(node) {
+    const count = Number.parseInt(getWidget(node, "bank_count")?.value, 10);
+    if (!Number.isFinite(count)) {
+        return 1;
+    }
+    return Math.min(MAX_BANKS, Math.max(1, count));
+}
+
+function configureLoraFilter(node, folderWidget, loraWidget) {
+    if (!Array.isArray(loraWidget.options?.values)) {
         return;
     }
 
@@ -81,7 +93,75 @@ function configureFilter(node) {
     };
 
     syncSelection();
-    node.enviralSyncLoraFilter = syncSelection;
+    return syncSelection;
+}
+
+function updateBankVisibility(node) {
+    const bankCount = getBankCount(node);
+    for (let bankIndex = 2; bankIndex <= MAX_BANKS; bankIndex += 1) {
+        const hidden = bankIndex > bankCount;
+        for (const name of BANK_WIDGET_NAMES) {
+            const widget = getWidget(node, getBankWidgetName(name, bankIndex));
+            if (widget) {
+                widget.hidden = hidden;
+            }
+        }
+    }
+
+    const size = node.computeSize?.();
+    if (size) {
+        node.setSize?.(size);
+    }
+    node.setDirtyCanvas?.(true, true);
+}
+
+function configureFilter(node) {
+    const folderWidget = getWidget(node, "folder");
+    if (!folderWidget) {
+        return;
+    }
+
+    const syncSelections = [];
+    for (let bankIndex = 1; bankIndex <= MAX_BANKS; bankIndex += 1) {
+        const loraWidget = getWidget(node, getBankWidgetName("lora_name", bankIndex));
+        if (!loraWidget) {
+            continue;
+        }
+        const syncSelection = configureLoraFilter(node, folderWidget, loraWidget);
+        if (syncSelection) {
+            syncSelections.push(syncSelection);
+        }
+    }
+    if (syncSelections.length === 0) {
+        return;
+    }
+
+    function sync() {
+        for (const syncSelection of syncSelections) {
+            syncSelection();
+        }
+        updateBankVisibility(node);
+    }
+
+    const bankCountWidget = getWidget(node, "bank_count");
+    if (bankCountWidget) {
+        const originalCallback = bankCountWidget.callback;
+        bankCountWidget.callback = function (value) {
+            const result = originalCallback?.apply(this, arguments);
+            sync();
+            return result;
+        };
+    }
+
+    const originalCallback = folderWidget.callback;
+    folderWidget.callback = function (value) {
+        const result = originalCallback?.apply(this, arguments);
+        sync();
+        return result;
+    };
+
+    sync();
+    node.enviralSyncLoraFilter = sync;
 }
 
 app.registerExtension({

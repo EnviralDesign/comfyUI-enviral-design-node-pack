@@ -70,6 +70,119 @@ class LoraNodeTests(unittest.TestCase):
             "WAN/Characters",
         )
 
+    def test_filtered_loader_exposes_up_to_five_banks(self):
+        module = load_lora_nodes(["wan/one.safetensors"])
+
+        input_types = module.EnviralLoadLoraFiltered.INPUT_TYPES()
+        self.assertEqual(
+            list(input_types["required"]),
+            [
+                "model",
+                "clip",
+                "folder",
+                "lora_name",
+                "strength_model",
+                "strength_clip",
+                "bank_count",
+            ],
+        )
+        self.assertEqual(input_types["required"]["bank_count"][1]["default"], 1)
+        self.assertEqual(
+            input_types["required"]["bank_count"][1]["max"],
+            module.MAX_LORA_BANKS,
+        )
+        self.assertIn("lora_name_5", input_types["optional"])
+        self.assertEqual(
+            input_types["optional"]["strength_model_2"][1]["default"], 0.0
+        )
+        self.assertEqual(
+            input_types["optional"]["strength_clip_5"][1]["default"], 0.0
+        )
+
+    def test_filtered_loader_bypasses_zero_strength_banks(self):
+        module = load_lora_nodes(["wan/one.safetensors"])
+        model = object()
+        clip = object()
+        loader = module.EnviralLoadLoraFiltered()
+
+        self.assertIs(
+            module.EnviralLoadLoraFiltered.VALIDATE_INPUTS(
+                "not-a-folder",
+                "",
+                strength_model=0,
+                strength_clip=0,
+                bank_count=3,
+                lora_name_2="not/a/lora.safetensors",
+                strength_model_2=0,
+                strength_clip_2=0,
+            ),
+            True,
+        )
+        self.assertEqual(
+            loader.load_lora_filtered(
+                model,
+                clip,
+                "not-a-folder",
+                "",
+                0,
+                0,
+                bank_count=3,
+                lora_name_2="not/a/lora.safetensors",
+                strength_model_2=0,
+                strength_clip_2=0,
+            ),
+            (model, clip),
+        )
+
+    def test_filtered_loader_applies_active_banks_in_order(self):
+        module = load_lora_nodes(
+            ["wan/one.safetensors", "wan/three.safetensors", "sdxl/other.safetensors"]
+        )
+        loader = module.EnviralLoadLoraFiltered()
+        calls = []
+
+        def load_lora(model, clip, lora_name, strength_model, strength_clip):
+            calls.append((model, clip, lora_name, strength_model, strength_clip))
+            return (f"{model}:{lora_name}", f"{clip}:{lora_name}")
+
+        loader.load_lora = load_lora
+        result = loader.load_lora_filtered(
+            "model",
+            "clip",
+            "wan",
+            "wan/one.safetensors",
+            1.0,
+            0.0,
+            bank_count=3,
+            lora_name_2="sdxl/other.safetensors",
+            strength_model_2=0.0,
+            strength_clip_2=0.0,
+            lora_name_3="wan/three.safetensors",
+            strength_model_3=0.0,
+            strength_clip_3=0.75,
+        )
+
+        self.assertEqual(
+            calls,
+            [
+                ("model", "clip", "wan/one.safetensors", 1.0, 0.0),
+                (
+                    "model:wan/one.safetensors",
+                    "clip:wan/one.safetensors",
+                    "wan/three.safetensors",
+                    0.0,
+                    0.75,
+                ),
+            ],
+        )
+        self.assertEqual(
+            result,
+            (
+                "model:wan/one.safetensors:wan/three.safetensors",
+                "clip:wan/one.safetensors:wan/three.safetensors",
+            ),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

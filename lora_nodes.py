@@ -1,4 +1,5 @@
 ALL_LORA_FOLDERS = "All LoRAs"
+MAX_LORA_BANKS = 5
 
 
 def _normalize_lora_path(value):
@@ -184,9 +185,73 @@ Native-style LoRA loader with a string-linkable LoRA dropdown.
 
 
 class EnviralLoadLoraFiltered(EnviralLoadLora):
+    @staticmethod
+    def _bank_input_name(input_name, bank_index):
+        if bank_index == 1:
+            return input_name
+        return f"{input_name}_{bank_index}"
+
+    @classmethod
+    def _bank_values(
+        cls,
+        lora_name,
+        strength_model,
+        strength_clip,
+        bank_count,
+        kwargs,
+    ):
+        try:
+            bank_count = int(bank_count)
+        except (TypeError, ValueError) as err:
+            raise ValueError(
+                f"bank_count must be between 1 and {MAX_LORA_BANKS}"
+            ) from err
+        if not 1 <= bank_count <= MAX_LORA_BANKS:
+            raise ValueError(f"bank_count must be between 1 and {MAX_LORA_BANKS}")
+
+        banks = [(1, lora_name, strength_model, strength_clip)]
+        for bank_index in range(2, bank_count + 1):
+            banks.append(
+                (
+                    bank_index,
+                    kwargs.get(cls._bank_input_name("lora_name", bank_index)),
+                    kwargs.get(cls._bank_input_name("strength_model", bank_index), 0.0)
+                    or 0.0,
+                    kwargs.get(cls._bank_input_name("strength_clip", bank_index), 0.0)
+                    or 0.0,
+                )
+            )
+        return banks
+
+    @staticmethod
+    def _is_bypassed(strength_model, strength_clip):
+        return strength_model == 0 and strength_clip == 0
+
+    @classmethod
+    def _validate_lora_bank(cls, folder, lora_name, bank_index):
+        if not str(lora_name or "").strip():
+            raise ValueError(
+                f"LoRA bank {bank_index} must select a LoRA when either strength is non-zero"
+            )
+        cls._resolve_lora_path(lora_name)
+        if not _lora_is_in_folder(lora_name, folder):
+            raise ValueError(f"LoRA {lora_name!r} is not inside folder {folder!r}")
+
     @classmethod
     def INPUT_TYPES(cls):
         required = super().INPUT_TYPES()["required"]
+        optional = {}
+        for bank_index in range(2, MAX_LORA_BANKS + 1):
+            for input_name in ("lora_name", "strength_model", "strength_clip"):
+                input_type, options = required[input_name]
+                optional[cls._bank_input_name(input_name, bank_index)] = (
+                    input_type,
+                    {
+                        **options,
+                        "default": 0.0 if input_name.startswith("strength_") else options["default"],
+                        "display_name": f"{input_name} {bank_index}",
+                    },
+                )
         return {
             "required": {
                 "model": required["model"],
@@ -195,12 +260,23 @@ class EnviralLoadLoraFiltered(EnviralLoadLora):
                 "lora_name": required["lora_name"],
                 "strength_model": required["strength_model"],
                 "strength_clip": required["strength_clip"],
+                "bank_count": (
+                    "INT",
+                    {
+                        "default": 1,
+                        "min": 1,
+                        "max": MAX_LORA_BANKS,
+                        "display_name": "banks",
+                        "tooltip": "Number of LoRA banks shown and applied.",
+                    },
+                ),
             },
+            "optional": optional,
         }
 
     FUNCTION = "load_lora_filtered"
     DESCRIPTION = """
-LoRA loader with a folder-filtered dropdown that follows ComfyUI's current LoRA list.
+LoRA loader with a shared folder filter and independently bypassable LoRA banks.
 """
     SEARCH_ALIASES = [
         "lora",
@@ -211,12 +287,34 @@ LoRA loader with a folder-filtered dropdown that follows ComfyUI's current LoRA 
     ]
 
     @classmethod
-    def VALIDATE_INPUTS(cls, folder, lora_name, **kwargs):
+    def VALIDATE_INPUTS(
+        cls,
+        folder,
+        lora_name,
+        strength_model=1.0,
+        strength_clip=1.0,
+        bank_count=1,
+        **kwargs,
+    ):
         try:
+            banks = cls._bank_values(
+                lora_name,
+                strength_model,
+                strength_clip,
+                bank_count,
+                kwargs,
+            )
+            active_banks = [
+                bank
+                for bank in banks
+                if not cls._is_bypassed(bank[2], bank[3])
+            ]
+            if not active_banks:
+                return True
+
             folder = cls._resolve_folder(folder)
-            cls._resolve_lora_path(lora_name)
-            if not _lora_is_in_folder(lora_name, folder):
-                return f"LoRA {lora_name!r} is not inside folder {folder!r}"
+            for bank_index, lora_name, _, _ in active_banks:
+                cls._validate_lora_bank(folder, lora_name, bank_index)
         except Exception as err:
             return str(err)
         return True
@@ -233,13 +331,29 @@ LoRA loader with a folder-filtered dropdown that follows ComfyUI's current LoRA 
         lora_name,
         strength_model,
         strength_clip,
+        bank_count=1,
+        **kwargs,
     ):
-        folder = self._resolve_folder(folder)
-        if not _lora_is_in_folder(lora_name, folder):
-            raise ValueError(f"LoRA {lora_name!r} is not inside folder {folder!r}")
-        return self.load_lora(
-            model, clip, lora_name, strength_model, strength_clip
+        banks = self._bank_values(
+            lora_name,
+            strength_model,
+            strength_clip,
+            bank_count,
+            kwargs,
         )
+        active_banks = [
+            bank for bank in banks if not self._is_bypassed(bank[2], bank[3])
+        ]
+        if not active_banks:
+            return (model, clip)
+
+        folder = self._resolve_folder(folder)
+        for bank_index, lora_name, strength_model, strength_clip in active_banks:
+            self._validate_lora_bank(folder, lora_name, bank_index)
+            model, clip = self.load_lora(
+                model, clip, lora_name, strength_model, strength_clip
+            )
+        return (model, clip)
 
 
 class EnviralLoadLoraModelOnly(_EnviralLoraLoaderBase):
