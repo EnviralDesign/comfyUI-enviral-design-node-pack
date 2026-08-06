@@ -16,6 +16,24 @@ function isInFolder(loraName, folder) {
     return normalizedFolder !== "" && normalizedName.startsWith(`${normalizedFolder}/`);
 }
 
+function getLoraDisplayName(loraName, folder) {
+    const name = String(loraName ?? "");
+    const normalizedFolder = normalizePath(folder);
+    if (
+        normalizedFolder === "" ||
+        normalizedFolder.toLowerCase() === normalizePath(ALL_FOLDERS).toLowerCase()
+    ) {
+        return name;
+    }
+
+    const normalizedName = normalizePath(name);
+    const prefix = `${normalizedFolder}/`;
+    if (!normalizedName.toLowerCase().startsWith(prefix.toLowerCase())) {
+        return name;
+    }
+    return normalizedName.slice(prefix.length);
+}
+
 function getWidget(node, name) {
     return node.widgets?.find((widget) => widget.name === name);
 }
@@ -28,6 +46,9 @@ function configureFilter(node) {
     }
 
     let allLoras = [...loraWidget.options.values];
+    loraWidget.options.getOptionLabel = (loraName) =>
+        getLoraDisplayName(loraName, folderWidget.value);
+
     const valuesDescriptor = {
         configurable: true,
         enumerable: true,
