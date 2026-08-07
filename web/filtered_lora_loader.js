@@ -160,23 +160,43 @@ function configureLoraFilter(node, folderWidget, loraWidget) {
     return syncSelection;
 }
 
-function updateBankVisibility(node) {
-    const bankCount = getBankCount(node);
+function configureBankWidgets(node) {
+    const widgetsByBank = new Map();
     for (let bankIndex = 2; bankIndex <= MAX_BANKS; bankIndex += 1) {
-        const hidden = bankIndex > bankCount;
-        for (const name of BANK_WIDGET_NAMES) {
-            const widget = getWidget(node, getBankWidgetName(name, bankIndex));
-            if (widget) {
-                widget.hidden = hidden;
-            }
-        }
+        widgetsByBank.set(
+            bankIndex,
+            BANK_WIDGET_NAMES.map((name) =>
+                getWidget(node, getBankWidgetName(name, bankIndex)),
+            ).filter(Boolean),
+        );
     }
+    const bankWidgets = new Set([...widgetsByBank.values()].flat());
+    const firstBankEnd = getWidget(node, "strength_clip");
+    let visibleBankCount = null;
 
-    const size = node.computeSize?.();
-    if (size) {
-        node.setSize?.(size);
-    }
-    node.setDirtyCanvas?.(true, true);
+    return function updateBankWidgets() {
+        const bankCount = getBankCount(node);
+        if (bankCount === visibleBankCount) {
+            return;
+        }
+
+        const visibleWidgets = [];
+        for (let bankIndex = 2; bankIndex <= bankCount; bankIndex += 1) {
+            visibleWidgets.push(...widgetsByBank.get(bankIndex));
+        }
+        const baseWidgets = node.widgets.filter((widget) => !bankWidgets.has(widget));
+        const insertAt = Math.max(0, baseWidgets.indexOf(firstBankEnd) + 1);
+        baseWidgets.splice(insertAt, 0, ...visibleWidgets);
+        node.widgets.splice(0, node.widgets.length, ...baseWidgets);
+        visibleBankCount = bankCount;
+
+        const width = node.size?.[0];
+        const naturalSize = node.computeSize?.();
+        if (naturalSize) {
+            node.setSize?.([width ?? naturalSize[0], naturalSize[1]]);
+        }
+        node.setDirtyCanvas?.(true, true);
+    };
 }
 
 function configureFilter(node) {
@@ -185,12 +205,14 @@ function configureFilter(node) {
         return;
     }
 
+    const loraWidgets = [];
     const syncSelections = [];
     for (let bankIndex = 1; bankIndex <= MAX_BANKS; bankIndex += 1) {
         const loraWidget = getWidget(node, getBankWidgetName("lora_name", bankIndex));
         if (!loraWidget) {
             continue;
         }
+        loraWidgets.push(loraWidget);
         const syncSelection = configureLoraFilter(node, folderWidget, loraWidget);
         if (syncSelection) {
             syncSelections.push(syncSelection);
@@ -199,6 +221,7 @@ function configureFilter(node) {
     if (syncSelections.length === 0) {
         return;
     }
+    const updateBankWidgets = configureBankWidgets(node);
 
     function sync() {
         const { sourceWidget } = getConnectedAllowList(node);
@@ -224,7 +247,7 @@ function configureFilter(node) {
         for (const syncSelection of syncSelections) {
             syncSelection();
         }
-        updateBankVisibility(node);
+        updateBankWidgets();
     }
 
     const bankCountWidget = getWidget(node, "bank_count");
@@ -273,11 +296,8 @@ function configureFilter(node) {
             }
         }
         if (loras) {
-            for (let bankIndex = 1; bankIndex <= MAX_BANKS; bankIndex += 1) {
-                const loraWidget = getWidget(this, getBankWidgetName("lora_name", bankIndex));
-                if (loraWidget) {
-                    loraWidget.options.values = loras;
-                }
+            for (const loraWidget of loraWidgets) {
+                loraWidget.options.values = loras;
             }
         }
         this.enviralSyncLoraFilter?.();
@@ -285,7 +305,7 @@ function configureFilter(node) {
     };
 
     node.enviralSyncLoraFilter = sync;
-    sync();
+    queueMicrotask(sync);
 }
 
 app.registerExtension({

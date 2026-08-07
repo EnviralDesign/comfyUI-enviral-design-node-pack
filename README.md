@@ -177,7 +177,8 @@ Inputs:
   `Text (Multiline)` node; each non-empty line keeps an exact displayed name or
   full relative LoRA path
 - each bank has a LoRA dropdown plus separate model and CLIP strengths; a bank
-  is bypassed when both strengths are zero
+  is bypassed when both strengths are zero; changing `banks` adds or removes
+  complete bank controls while retaining their values during the session
 
 Outputs:
 
@@ -189,7 +190,8 @@ Outputs:
 The node uses ComfyUI's normal combo refresh behavior. Press `R` on the canvas
 or use **Refresh Node Definitions** to re-enumerate LoRAs and folders, then
 reapply the folder and allow-list filters. Saved selections are preserved when
-still valid and otherwise move to the first visible option.
+still valid and otherwise move to the first visible option. Refreshes do not
+resize the node; only changing the number of visible banks adjusts its height.
 
 The earlier standard and model-only Enviral LoRA loaders remain registered for
 existing workflows but are deprecated and hidden from normal node discovery.
