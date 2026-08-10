@@ -196,6 +196,22 @@ resize the node; only changing the number of visible banks adjusts its height.
 The earlier standard and model-only Enviral LoRA loaders remain registered for
 existing workflows but are deprecated and hidden from normal node discovery.
 
+### Filtered Model Loaders
+
+Three single-selection loaders use the same folder, allow-list, relative-label,
+and visible-list behavior as `Enviral Load LoRA`:
+
+- `Enviral Load Checkpoint` returns `model`, `clip`, `vae`, and
+  `checkpoint_list`.
+- `Enviral Load Diffusion Model` returns `model` and `diffusion_model_list`,
+  while retaining the native `weight_dtype` choices.
+- `Enviral Load Text Encoder` returns `clip` and `text_encoder_list`, while
+  retaining the native encoder `type` and optional `device` choices.
+
+Each has one selection only—there are no banks. The selection continues to use
+the full relative ComfyUI path for loading; when a folder is chosen, the
+dropdown and list output omit that redundant folder prefix.
+
 ### `Model Patch Torch Settings`
 
 Experimental node that patches a compatible ComfyUI `MODEL` with callbacks for
